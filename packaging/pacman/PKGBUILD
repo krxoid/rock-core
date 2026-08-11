@@ -1,0 +1,25 @@
+pkgname=rock-core
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Minecraft Bedrock Dedicated Server manager"
+arch=('any')
+license=('GPL-3.0-or-later')
+depends=('java-runtime')
+
+source=(
+    "rock-core-1.0-RELEASE.jar"
+    "rock"
+)
+
+sha256sums=(
+    'd355c7ebd58e31c5ecf2c7c0c99c799646ecf3bbae1d0fa82b2fe9a003239090'
+    'f282147acd9bf86e091b4b8a5d9b64ddd1c22a9890f0ddb27fc35509b2cd2159'
+)
+
+package() {
+    install -Dm755 "$srcdir/rock" \
+        "$pkgdir/usr/bin/rock"
+
+    install -Dm644 "$srcdir/rock-core-1.0-RELEASE.jar" \
+        "$pkgdir/usr/share/rock-core/rock-core.jar"
+}

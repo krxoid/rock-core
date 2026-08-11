@@ -18,8 +18,13 @@ public final class Main {
         }
 
         switch (args[0].toLowerCase()) {
-            case "help", "--help", "-h" -> printHelp();
-            case "version", "--version", "-v" -> printVersion();
+
+            case "help", "--help", "-h" ->
+                    printHelp();
+
+            case "version", "--version", "-v" ->
+                    printVersion();
+
             default -> {
 
                 int exitCode =
@@ -32,72 +37,43 @@ public final class Main {
         }
     }
 
-    private static void printVersion() {
-        System.out.println(
-                "Rock Core Server Manager " + VERSION
-        );
-    }
-
     private static void printHelp() {
+
         System.out.println("""
                 
-                Rock Core Server Manager
-                A CLI-first Minecraft Bedrock server manager.
+                Rock Core - Minecraft Bedrock Server Manager
                 
                 Usage:
-                  rock <command> [arguments]
+                  rock                     Start interactive shell
+                  rock <command> [args]    Run a command directly
                 
-                Server commands:
+                Global options:
+                  -h, --help               Show this help
+                  -v, --version            Show version
+                
+                Commands:
                   server list
-                      List configured servers.
-                
-                  server create <name>
-                      Create a new server instance.
-                
+                  server create <name> <version>
                   server start <name>
-                      Start a server.
-                
                   server stop <name>
-                      Stop a server.
-                
                   server restart <name>
-                      Restart a server.
-                
                   server status <name>
-                      Show server status.
-                
                   server players <name>
-                      Show connected players.
-                
                   server console <name>
-                      Attach to the server console.
-                
-                  server cmd <name> <command>
-                      Send a command to the server.
-                
+                  server exec <name> <command>
                   server backup <name>
-                      Create a world backup.
-                
                   server delete <name>
-                      Delete a server instance.
+                  server import world <server> <path>
                 
-                Global commands:
-                  help
-                      Show this help message.
-                
-                  version
-                      Show the program version.
-                
-                Examples:
-                  rock server list
-                  rock server create survival
-                  rock server start survival
-                  rock server status survival
-                  rock server players survival
-                  rock server cmd survival "op krxoid"
-                  rock server console survival
-                  rock server backup survival
+                Run 'rock' without arguments to enter
+                the interactive Rock Core shell.
                 
                 """);
+    }
+
+    private static void printVersion() {
+        System.out.println(
+                "Rock Core " + VERSION
+        );
     }
 }

@@ -121,13 +121,17 @@ public final class ServerManager {
         }
     }
 
-    public void createServer(String name)
+    /**
+     * Creates the filesystem layout for a new Bedrock server.
+     * BDS itself is downloaded by ServerCommandHandler.
+     */
+    public Path createServer(String name)
             throws ServerManagerException {
 
         validateName(name);
+        initializeDirectories();
 
-        Path directory =
-                serverPath(name);
+        Path directory = serverPath(name);
 
         if (Files.exists(directory)) {
             throw new ServerManagerException(
@@ -137,43 +141,27 @@ public final class ServerManager {
 
         try {
             Files.createDirectories(directory);
+            Files.createDirectories(directory.resolve("worlds"));
 
-            Files.createDirectories(
-                    directory.resolve("worlds")
-            );
-
-            Files.createDirectories(
-                    directory.resolve("backups")
-            );
-
-            Files.createDirectories(
-                    directory.resolve("logs")
-            );
-
-            Files.writeString(
-                    directory.resolve(
-                            "server.properties"
-                    ),
-                    "# Rock Core Server Manager\n",
-                    StandardCharsets.UTF_8
-            );
-
-            instances.put(
-                    name,
-                    new ServerInstance(
-                            name,
-                            directory
-                    )
-            );
+            return directory;
 
         } catch (IOException e) {
+            try {
+                deleteDirectory(directory);
+            } catch (IOException ignored) {
+            }
+
             throw new ServerManagerException(
-                    "Failed to create server '" +
-                            name +
-                            "'.",
+                    "Failed to create server '" + name + "'.",
                     e
             );
         }
+    }
+
+    public Path getServerDirectory(String name)
+            throws ServerManagerException {
+        validateName(name);
+        return serverPath(name);
     }
 
     public void startServer(String name)
