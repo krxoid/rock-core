@@ -4,25 +4,16 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="771d44c5-eb75-4eac-a510-953676b9b24c" name="Changes" comment="Initial Commit">
+    <list default="true" id="771d44c5-eb75-4eac-a510-953676b9b24c" name="Changes" comment="Baseline">
+      <change afterPath="$PROJECT_DIR$/LICENSE" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/PKGBUILD" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/pkg/rock-core/.BUILDINFO" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/pkg/rock-core/.MTREE" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/pkg/rock-core/.PKGINFO" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/pkg/rock-core/usr/share/rock-core/rock-core.jar" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/rock" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/rock-core-1.0-RELEASE.jar" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/rock-core-1.0.0-1-any.pkg.tar.zst" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/META-INF/MANIFEST.MF" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/com/krxoid/CommandDispatcher.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/com/krxoid/Main.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/com/krxoid/ServerCommandHandler.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/com/krxoid/ServerInstance.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/com/krxoid/ServerManager.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/com/krxoid/ServerManagerException.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/rock" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/rock-core-1.0-RELEASE.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rock-core_1.0.0-1.dsc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rock-core_1.0.0-1.tar.gz" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rock-core_1.0.0-1_all.deb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rock-core_1.0.0-1_amd64.buildinfo" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rock-core_1.0.0-1_amd64.changes" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,22 +63,25 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Gradle.rock-core-launcher [:com.krxoid.Main.main()].executor&quot;: &quot;Run&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/krxoid/IdeaProjects/rock-core&quot;,
-    &quot;onboarding.tips.debug.path&quot;: &quot;/home/krxoid/IdeaProjects/rock-core-launcher/src/main/java/com/krxoid/Main.java&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "Gradle.rock-core-launcher [:com.krxoid.Main.main()].executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "git-widget-placeholder": "master",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/home/krxoid/IdeaProjects/rock-core",
+    "onboarding.tips.debug.path": "/home/krxoid/IdeaProjects/rock-core-launcher/src/main/java/com/krxoid/Main.java",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2",
+    "settings.editor.selected.configurable": "copyright.profiles"
   }
-}</component>
+}]]></component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="771d44c5-eb75-4eac-a510-953676b9b24c" name="Changes" comment="" />
@@ -104,11 +98,28 @@
       <option name="project" value="LOCAL" />
       <updated>1786456292931</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Baseline">
+      <option name="closed" value="true" />
+      <created>1786522443116</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1786522443116</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Baseline">
+      <option name="closed" value="true" />
+      <created>1786523263362</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1786523263362</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Initial Commit" />
-    <option name="LAST_COMMIT_MESSAGE" value="Initial Commit" />
+    <MESSAGE value="Baseline" />
+    <option name="LAST_COMMIT_MESSAGE" value="Baseline" />
   </component>
 </project>
