@@ -262,9 +262,15 @@ public final class ServerInstance {
             String line;
 
             while ((line = reader.readLine()) != null) {
+
+                System.out.print("\r\033[2K");
+
                 System.out.println(
                         "[" + name + "] " + line
                 );
+
+                System.out.print("rock > ");
+                System.out.flush();
             }
 
         } catch (IOException ignored) {

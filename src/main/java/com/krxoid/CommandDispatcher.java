@@ -14,29 +14,19 @@ public final class CommandDispatcher {
 
     public void startShell() {
 
-        Scanner scanner =
-                new Scanner(System.in);
+        Scanner scanner = new Scanner(System.in);
 
         System.out.println("Rock Core");
-        System.out.println(
-                "Type 'help' for a list of commands."
-        );
-        System.out.println(
-                "Type 'exit' or 'quit' to leave."
-        );
+        System.out.println("Type 'help' for a list of commands.");
+        System.out.println("Type 'exit' or 'quit' to leave.");
         System.out.println();
 
-        while (true) {
+        System.out.print("rock > ");
+        System.out.flush();
 
-            System.out.print("rock> ");
-            System.out.flush();
+        while (scanner.hasNextLine()) {
 
-            if (!scanner.hasNextLine()) {
-                break;
-            }
-
-            String line =
-                    scanner.nextLine().trim();
+            String line = scanner.nextLine().trim();
 
             if (line.isEmpty()) {
                 continue;
@@ -49,16 +39,13 @@ public final class CommandDispatcher {
 
             if (line.equalsIgnoreCase("help")) {
                 printHelp();
+                System.out.print("rock > ");
+                System.out.flush();
                 continue;
             }
 
-            String[] args =
-                    parseArguments(line);
-
-            dispatch(args);
+            dispatch(parseArguments(line));
         }
-
-        System.out.println("Goodbye.");
     }
 
     public int dispatch(String[] args) {
@@ -88,6 +75,7 @@ public final class CommandDispatcher {
 
                 case "help":
                     printHelp();
+                    System.out.print("rock > ");
                     return 0;
 
                 case "version":
@@ -103,6 +91,8 @@ public final class CommandDispatcher {
                     System.err.println(
                             "Type 'help' for help."
                     );
+
+                    System.out.print("rock > ");
 
                     return 1;
             }
@@ -137,6 +127,7 @@ public final class CommandDispatcher {
                   server backup <name>
                   server delete <name>
                   server import world <server> <path>
+                  server config <name> <variable> <value>
                 
                 Global:
                   help
