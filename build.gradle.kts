@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.krxoid"
-version = "1.0-RELEASE"
+version = "1.1-RELEASE"
 
 repositories {
     mavenCentral()

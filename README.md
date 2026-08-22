@@ -174,8 +174,9 @@ Rock Core is distributed through native Linux package formats.
 
 Current targets:
 
-* Arch Linux / AUR
+* Arch Linux / CachyOS
 * Debian / Ubuntu
+* Fedora / RHEL
 
 Packaging definitions are maintained separately from the main source repository.
 
