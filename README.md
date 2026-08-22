@@ -88,6 +88,7 @@ server exec <name> <command>
 server backup <name>
 server delete <name>
 server import world <server> <path>
+server config <name> <variable> <value>
 ```
 
 External operations such as acquiring and extracting a BDS distribution are handled at this layer rather than by the lower-level server state manager.
