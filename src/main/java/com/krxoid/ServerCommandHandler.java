@@ -147,7 +147,10 @@ public final class ServerCommandHandler {
                 return delete(commandArgs[0]);
 
             case "import":
-                return importCommand(commandArgs);
+                return importcmd(commandArgs);
+
+            case "config":
+                return config(commandArgs);
 
             case "help":
                 printServerHelp();
@@ -319,7 +322,7 @@ public final class ServerCommandHandler {
      * server import mod ...
      * server import pack ...
      */
-    private int importCommand(
+    private int importcmd(
             String[] args
     ) {
 
@@ -728,6 +731,23 @@ public final class ServerCommandHandler {
 
             printError(e);
             return 1;
+        }
+    }
+
+    public int config(String[] args) {
+
+        try {
+
+            serverManager.changeConfig(args[1], args[2], args[0]);
+            return 0;
+
+        }
+
+        catch (ServerManagerException | IOException e){
+
+            e.printStackTrace(System.err);
+            return 1;
+
         }
     }
 

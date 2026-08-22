@@ -1,5 +1,6 @@
 package com.krxoid;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -210,6 +211,46 @@ public final class ServerManager {
                         server.getDirectory()
         );
     }
+
+    public void changeConfig(String variable, String value, String name)
+            throws ServerManagerException, IOException {
+
+        Path configPath = getServerDirectory(name).resolve("server.properties");
+        List<String> config = Files.readAllLines(configPath);
+
+        boolean found = false;
+
+        for (int i = 0; i < config.size(); i++) {
+            String line = config.get(i).trim();
+
+            // Ignore comments and blank lines
+            if (line.isEmpty() || line.startsWith("#")) {
+                continue;
+            }
+
+            int separator = line.indexOf('=');
+
+            if (separator == -1) {
+                continue;
+            }
+
+            String key = line.substring(0, separator).trim();
+
+            if (key.equals(variable)) {
+                config.set(i, key + "=" + value);
+                found = true;
+                break;
+            }
+        }
+
+        // If the property doesn't exist, add it
+        if (!found) {
+            config.add(variable + "=" + value);
+        }
+
+        Files.write(configPath, config);
+    }
+
 
     public void printPlayers(String name)
             throws ServerManagerException {
