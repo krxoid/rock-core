@@ -1,14 +1,12 @@
 package com.krxoid;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
+
+import static com.krxoid.ServerCommandHandler.printPrompt;
 
 public final class ServerInstance {
 
@@ -18,6 +16,8 @@ public final class ServerInstance {
 
     private Process process;
     private BufferedWriter writer;
+
+    private boolean isAttached;
 
     public ServerInstance(
             String name,
@@ -204,6 +204,8 @@ public final class ServerInstance {
                 "Press Ctrl+D to detach."
         );
 
+        System.out.print("[" + name + "] "); printPrompt();
+
         try {
             BufferedReader input =
                     new BufferedReader(
@@ -219,6 +221,7 @@ public final class ServerInstance {
                     (line = input.readLine()) != null) {
 
                 if (line.isBlank()) {
+                    System.out.print("[" + name + "] "); printPrompt();
                     continue;
                 }
 
@@ -263,14 +266,25 @@ public final class ServerInstance {
 
             while ((line = reader.readLine()) != null) {
 
-                System.out.print("\r\033[2K");
+                if(isAttached) {
+                    System.out.print("\r\033[2K");
 
-                System.out.println(
-                        "[" + name + "] " + line
-                );
+                    System.out.println(
+                            "[" + name + "] " + line
+                    );
 
-                System.out.print("rock > ");
-                System.out.flush();
+                    printPrompt();
+                }
+
+                else {
+                    System.out.print("\r\033[2K");
+
+                    System.out.println(
+                            "[" + name + "] " + line
+                    );
+
+                    System.out.print("[" + name + "] "); printPrompt();
+                }
             }
 
         } catch (IOException ignored) {

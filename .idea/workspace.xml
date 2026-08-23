@@ -5,30 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="771d44c5-eb75-4eac-a510-953676b9b24c" name="Changes" comment="Fixed prompt printing issues and added a new command to change server.properties in runtime">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/apt/DEBIAN/control" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/apt/rock-core_1.0.0_all.deb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/apt/usr/share/rock-core/rock-core.jar" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/PKGBUILD" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/pkg/rock-core/.BUILDINFO" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/pkg/rock-core/.MTREE" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/pkg/rock-core/.PKGINFO" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/pkg/rock-core/usr/share/rock-core/rock-core.jar" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/rock" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/rock-core-1.0-1-any.pkg.tar.zst" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/rock-core-1.0.jar" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/META-INF/MANIFEST.MF" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/com/krxoid/CommandDispatcher.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/com/krxoid/Main.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/com/krxoid/ServerCommandHandler.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/com/krxoid/ServerInstance.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/com/krxoid/ServerManager.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/com/krxoid/ServerManagerException.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/rock" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/src/rock-core-1.0.jar" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/rpm/SPECS/rock-core.spec" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/packaging/rpm/rock" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/CommandDispatcher.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/CommandDispatcher.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/Main.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerCommandHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerCommandHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerInstance.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerInstance.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerManager.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,6 +33,23 @@
               <path>
                 <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
                 <item name="rock-core" type="f1a62948:ProjectNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="rock-core" type="f1a62948:ProjectNode" />
+                <item name="Dependencies" type="6de06a37:ExternalSystemViewDefaultContributor$MyDependenciesNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="rock-core" type="f1a62948:ProjectNode" />
+                <item name="Dependencies" type="6de06a37:ExternalSystemViewDefaultContributor$MyDependenciesNode" />
+                <item name="testCompileClasspath" type="62daadca:ExternalSystemViewDefaultContributor$DependencyScopeExternalSystemNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="rock-core" type="f1a62948:ProjectNode" />
+                <item name="Dependencies" type="6de06a37:ExternalSystemViewDefaultContributor$MyDependenciesNode" />
+                <item name="testRuntimeClasspath" type="62daadca:ExternalSystemViewDefaultContributor$DependencyScopeExternalSystemNode" />
               </path>
             </expand>
             <select />

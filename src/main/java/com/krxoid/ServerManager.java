@@ -2,6 +2,9 @@ package com.krxoid;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,12 +18,12 @@ import java.util.Map;
 
 public final class ServerManager {
 
-    private static final Path ROOT =
+    public static final Path ROOT =
             Path.of(
                     System.getProperty("user.home"),
                     ".local",
                     "share",
-                    "rock-core-server"
+                    "rock-core"
             );
 
     private static final Path SERVERS_DIR =
