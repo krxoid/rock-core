@@ -1,8 +1,10 @@
 package com.krxoid;
 
-public final class Main {
+import java.io.IOException;
 
-    private static final String VERSION = "1.0.0";
+import static com.krxoid.CommandDispatcher.VERSION;
+
+public final class Main {
 
     private Main() {
     }
@@ -13,7 +15,16 @@ public final class Main {
                 new CommandDispatcher();
 
         if (args.length == 0) {
+
+            try {
+                dispatcher.fetchVersions();
+            }
+            catch (IOException | InterruptedException e) {
+                System.err.println("Could not fetch versions.json");
+            }
+
             dispatcher.startShell();
+
             return;
         }
 
