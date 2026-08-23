@@ -13,7 +13,11 @@ import java.util.Arrays;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import static com.krxoid.ServerManager.ROOT;
+
 public final class ServerCommandHandler {
+
+    public static final String prompt = "rock > ";
 
     private static final String BDS_URL =
             "https://www.minecraft.net/bedrockdedicatedserver/bin-linux/"
@@ -164,6 +168,7 @@ public final class ServerCommandHandler {
                 );
 
                 printServerHelp();
+                printPrompt();
 
                 return 1;
         }
@@ -253,6 +258,16 @@ public final class ServerCommandHandler {
                 args[1];
 
         try {
+            if (version.equals("latest")) version = new CommandDispatcher()
+                    .getLatestVersion()
+                    .replace("[", "")
+                    .replace("]", "");
+        }
+        catch (IOException e){
+            e.printStackTrace();
+        }
+
+        try {
 
             if (!version.matches("\\d+(?:\\.\\d+){3}")) {
                 throw new ServerManagerException(
@@ -293,6 +308,8 @@ public final class ServerCommandHandler {
                             "."
             );
 
+            printPrompt();
+
             return 0;
 
         } catch (ServerManagerException e) {
@@ -308,6 +325,8 @@ public final class ServerCommandHandler {
                             e
                     )
             );
+
+            printPrompt();
 
             return 1;
         }
@@ -368,6 +387,8 @@ public final class ServerCommandHandler {
                 System.err.println(
                         "  world"
                 );
+
+                printPrompt();
 
                 return 1;
         }
@@ -584,11 +605,14 @@ public final class ServerCommandHandler {
 
         try {
             serverManager.listServers();
+            printPrompt();
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
+            printPrompt();
+
             return 1;
         }
     }
@@ -609,6 +633,7 @@ public final class ServerCommandHandler {
         } catch (ServerManagerException e) {
 
             printError(e);
+            printPrompt();
             return 1;
         }
     }
@@ -624,11 +649,16 @@ public final class ServerCommandHandler {
                             "' stopped."
             );
 
+            printPrompt();
+
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
+
+            printPrompt();
+
             return 1;
         }
     }
@@ -636,12 +666,15 @@ public final class ServerCommandHandler {
     public int restart(String name) {
 
         try {
+
             serverManager.restartServer(name);
+            printPrompt();
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
+            printPrompt();
             return 1;
         }
     }
@@ -650,11 +683,13 @@ public final class ServerCommandHandler {
 
         try {
             serverManager.printStatus(name);
+            printPrompt();
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
+            printPrompt();
             return 1;
         }
     }
@@ -663,11 +698,13 @@ public final class ServerCommandHandler {
 
         try {
             serverManager.printPlayers(name);
+            printPrompt();
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
+            printPrompt();
             return 1;
         }
     }
@@ -681,6 +718,7 @@ public final class ServerCommandHandler {
         } catch (ServerManagerException e) {
 
             printError(e);
+            printPrompt();
             return 1;
         }
     }
@@ -851,4 +889,10 @@ public final class ServerCommandHandler {
                         e.getMessage()
         );
     }
+
+    public static void printPrompt(){
+        System.out.print(prompt);
+        System.out.flush();
+    }
+
 }

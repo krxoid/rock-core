@@ -2,7 +2,7 @@
 
 A command-line management tool for Minecraft Bedrock Dedicated Server instances, written in Java.
 
-Rock Core provides a unified interface for creating, configuring, running, and managing multiple Bedrock Dedicated Server instances. The project is designed around a CLI-first architecture with explicit command dispatch, isolated server state, and native Linux packaging.
+Rock Core provides a unified interface for creating, configuring, running, and managing multiple Bedrock Dedicated Server instances. The project is designed around a CLI-first architecture with explicit command dispatch, isolated server state, and native Linux packaging. (GUI Development in progress using Qt)
 
 ## Features
 
@@ -18,10 +18,9 @@ Rock Core provides a unified interface for creating, configuring, running, and m
 * Server backups
 * World importing
 * Server deletion
+* Automatic available versions fetching
 * Automatic BDS acquisition from the official Minecraft distribution endpoint
-* Arch Linux packaging through the AUR
-* Debian package distribution
-
+* pacman/apt/dnf Support 
 ## Architecture
 
 The application is divided into several responsibilities:
@@ -87,7 +86,8 @@ server console <name>
 server exec <name> <command>
 server backup <name>
 server delete <name>
-server import world <server> <path>
+server import world <name> <path>
+server config <name> <variable> <value>
 ```
 
 External operations such as acquiring and extracting a BDS distribution are handled at this layer rather than by the lower-level server state manager.
@@ -114,14 +114,14 @@ The manager is responsible for maintaining this structure and managing the lifec
 Rock Core can be used interactively:
 
 ```text
-rock>
+rock > 
 ```
 
 or invoked directly:
 
 ```bash
 rock server list
-rock server status survival
+rock server status <name>
 ```
 
 This allows the same command implementation to be used from both a human-operated shell and external scripts.
@@ -132,12 +132,14 @@ Server creation accepts an explicit Bedrock Dedicated Server version:
 
 ```text
 server create survival 1.26.43.1
+server create smp latest
 ```
 
 The corresponding BDS archive is retrieved from the official Minecraft distribution endpoint and extracted into the newly created server directory.
 
 This keeps the server's runtime independent from the version of BDS installed for other instances.
 
+Latest is automatically resolved to the latest available version.
 ## World Importing
 
 World importing is exposed through a typed import command:

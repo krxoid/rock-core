@@ -1,11 +1,35 @@
 package com.krxoid;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Scanner;
+import java.util.stream.IntStream;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import static com.krxoid.ServerCommandHandler.printPrompt;
+import static com.krxoid.ServerManager.ROOT;
 
 public final class CommandDispatcher {
 
     private final ServerCommandHandler serverHandler;
+
+    public static String VERSION = "1.2.0";
+
+    public static Path VERSIONS_FILE = ROOT.resolve("versions.json");
+
+    private static final URI BDS_VERSIONS_URI = URI.create(
+            "https://raw.githubusercontent.com/" + "Bedrock-OSS/BDS-Versions/main/versions.json" );
+
 
     public CommandDispatcher() {
         this.serverHandler =
@@ -21,14 +45,14 @@ public final class CommandDispatcher {
         System.out.println("Type 'exit' or 'quit' to leave.");
         System.out.println();
 
-        System.out.print("rock > ");
-        System.out.flush();
+        printPrompt();
 
         while (scanner.hasNextLine()) {
 
             String line = scanner.nextLine().trim();
 
             if (line.isEmpty()) {
+                printPrompt();
                 continue;
             }
 
@@ -75,11 +99,49 @@ public final class CommandDispatcher {
 
                 case "help":
                     printHelp();
-                    System.out.print("rock > ");
+                    printPrompt();
                     return 0;
 
                 case "version":
                     printVersion();
+                    printPrompt();
+                    return 0;
+
+                case "cls", "clear":
+                    System.out.print("\033[2J\033[3J\033[H");
+                    printPrompt();
+                    return 0;
+
+                case "versions":
+
+                    try {
+
+                        if (commandArgs.length == 0) throw new IllegalArgumentException("Range not specified");
+
+                        System.out.println(
+                                Arrays.toString(
+                                        getVersions(
+                                                Integer.parseInt(
+                                                        commandArgs[0]
+                                                )
+                                        )
+                                )
+                        );
+                        printPrompt();
+                        return 0;
+                    }
+
+                    catch (IllegalArgumentException e) {
+
+                        System.err.println("Range not specified");
+                        printPrompt();
+                        return -1;
+                    }
+
+                case "latest":
+
+                    System.out.println(getLatestVersion());
+                    printPrompt();
                     return 0;
 
                 default:
@@ -92,7 +154,7 @@ public final class CommandDispatcher {
                             "Type 'help' for help."
                     );
 
-                    System.out.print("rock > ");
+                    printPrompt();
 
                     return 1;
             }
@@ -134,16 +196,90 @@ public final class CommandDispatcher {
                   version
                   exit
                   quit
-                
+                  cls
+                  versions <range>
                 """);
     }
 
-    private void printVersion() {
+    protected void fetchVersions()
+            throws IOException, InterruptedException {
 
-        System.out.println(
-                "Rock Core 1.0.0"
+        Files.createDirectories( VERSIONS_FILE.getParent() );
+
+        HttpRequest request = HttpRequest.newBuilder( BDS_VERSIONS_URI )
+                .GET()
+                .build();
+
+        HttpResponse<Path> response = HttpClient.newHttpClient().send(
+                request,
+                HttpResponse.BodyHandlers.ofFile(VERSIONS_FILE)
         );
+
+        if (response.statusCode() != 200) { Files.deleteIfExists( VERSIONS_FILE );
+
+            throw new IOException( "Failed to fetch BDS versions: HTTP " + response.statusCode() );
+        }
     }
+
+    private String[] getVersions(int range)
+            throws IOException {
+
+        if (range <= 0) {
+            throw new IllegalArgumentException(
+                    "Range must be greater than zero."
+            );
+        }
+
+        String json =
+                Files.readString(
+                        VERSIONS_FILE,
+                        StandardCharsets.UTF_8
+                );
+
+        JsonObject root =
+                JsonParser.parseString(json)
+                        .getAsJsonObject();
+
+        JsonObject linux =
+                root.getAsJsonObject("linux");
+
+        JsonArray versions =
+                linux.getAsJsonArray("versions");
+
+        int count =
+                Math.min(range, versions.size());
+
+        String[] result =
+                new String[count];
+
+        int start =
+                versions.size() - count;
+
+        for (int i = 0; i < count; i++) {
+            result[i] =
+                    versions
+                            .get(start + i)
+                            .getAsString();
+        }
+
+        return IntStream.range(0, result.length)
+                .mapToObj(i -> result[result.length - 1 - i])
+                .toArray(String[]::new);
+
+    }
+
+    public String getLatestVersion() throws IOException{
+
+        return Arrays.toString(getVersions(1));
+    }
+
+
+    private void printVersion(){
+
+        System.out.println("v" + VERSION);
+
+    }
+
 
     private String[] parseArguments(
             String line
