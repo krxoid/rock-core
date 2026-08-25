@@ -749,11 +749,13 @@ public final class ServerCommandHandler {
         try {
 
             serverManager.createBackup(name);
+            printPrompt();
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
+            printPrompt();
             return 1;
         }
     }
@@ -763,11 +765,13 @@ public final class ServerCommandHandler {
         try {
 
             serverManager.deleteServer(name);
+            printPrompt();
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
+            printPrompt();
             return 1;
         }
     }
@@ -777,6 +781,7 @@ public final class ServerCommandHandler {
         try {
 
             serverManager.changeConfig(args[1], args[2], args[0]);
+            printPrompt();
             return 0;
 
         }
@@ -784,6 +789,7 @@ public final class ServerCommandHandler {
         catch (ServerManagerException | IOException e){
 
             e.printStackTrace(System.err);
+            printPrompt();
             return 1;
 
         }

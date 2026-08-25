@@ -75,6 +75,7 @@ public final class Main {
                   server backup <name>
                   server delete <name>
                   server import world <server> <path>
+                  server config <name> <variable> <value>
                 
                 Run 'rock' without arguments to enter
                 the interactive Rock Core shell.
@@ -84,7 +85,7 @@ public final class Main {
 
     private static void printVersion() {
         System.out.println(
-                "Rock Core " + VERSION
+                "Rock Core v" + VERSION
         );
     }
 }
