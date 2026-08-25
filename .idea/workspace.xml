@@ -4,20 +4,23 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="771d44c5-eb75-4eac-a510-953676b9b24c" name="Changes" comment="Fixed prompt printing issues and added a new command to change server.properties in runtime">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="771d44c5-eb75-4eac-a510-953676b9b24c" name="Changes" comment="Fixed all prompt printing issues and added two new command &quot;versions&quot; and &quot;latest&quot;">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle.kts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/CommandDispatcher.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/CommandDispatcher.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/Main.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerCommandHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerCommandHandler.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerInstance.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerInstance.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerManager.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ChangesViewManager">
+    <option name="groupingKeys">
+      <option value="directory" />
+      <option value="module" />
+      <option value="repository" />
+    </option>
   </component>
   <component name="ExternalProjectsData">
     <projectState path="$PROJECT_DIR$">
@@ -96,7 +99,7 @@
     &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;master&quot;,
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/krxoid/IdeaProjects/rock-core&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/krxoid/IdeaProjects/Nukkit&quot;,
     &quot;onboarding.tips.debug.path&quot;: &quot;/home/krxoid/IdeaProjects/rock-core-launcher/src/main/java/com/krxoid/Main.java&quot;,
     &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
     &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
@@ -151,6 +154,7 @@
     <MESSAGE value="Baseline" />
     <MESSAGE value="Initial Commit" />
     <MESSAGE value="Fixed prompt printing issues and added a new command to change server.properties in runtime" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed prompt printing issues and added a new command to change server.properties in runtime" />
+    <MESSAGE value="Fixed all prompt printing issues and added two new command &quot;versions&quot; and &quot;latest&quot;" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed all prompt printing issues and added two new command &quot;versions&quot; and &quot;latest&quot;" />
   </component>
 </project>
