@@ -1,11 +1,15 @@
 package com.krxoid;
 
-import java.io.File;
+import com.sun.management.OperatingSystemMXBean;
+
+import javax.swing.*;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
+import java.io.InputStreamReader;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryUsage;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -39,6 +43,10 @@ public final class ServerManager {
 
     private final Map<String, ServerInstance> instances =
             new HashMap<>();
+
+    private static Double clkTck = null;
+
+    private static long CpuSamplingIntervalTime = 100; //In ms
 
     public ServerManager() {
         try {
@@ -192,8 +200,22 @@ public final class ServerManager {
         ServerInstance server =
                 getInstance(name);
 
+        MemoryMXBean memory = ManagementFactory.getMemoryMXBean();
+
+        MemoryUsage heap = memory.getHeapMemoryUsage();
+
+        OperatingSystemMXBean os =
+                (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+
+        double cpu = os.getProcessCpuLoad() * 100;
+
+        long used = heap.getUsed();
+        long max = heap.getMax();
+
+        String ramUsagePercentage = used/max * 100 + "%";
+
         System.out.println(
-                "Server: " + server.getName()
+                "\n" + "===" + server.getName() + "==="  + "\n"
         );
 
         System.out.println(
@@ -207,12 +229,71 @@ public final class ServerManager {
             System.out.println(
                     "PID: " + server.getPid()
             );
+            try {
+                System.out.println(
+                        "Ram: " +
+                                server.getRamUsage()/(1024*1024) + "MB"
+                );
+
+                long prevTotalJiffies = server.getCpuUsage();
+                Thread.sleep(CpuSamplingIntervalTime);
+
+                System.out.println(
+                        "Cpu: " +
+                                calculateCpuUsage(prevTotalJiffies, server.getCpuUsage(), CpuSamplingIntervalTime)/getThreadCount() + "\n"
+
+                );
+            }
+
+            catch (IOException | InterruptedException e){
+                e.printStackTrace();
+            }
         }
 
-        System.out.println(
-                "Directory: " +
-                        server.getDirectory()
-        );
+    }
+
+    public double calculateCpuUsage(long prevTotalJiffies, long currTotalJiffies, long elapsedMs) {
+        if (elapsedMs <= 0 || currTotalJiffies < prevTotalJiffies) {
+            return 0.0;
+        }
+
+        double jiffiesPerSecond = getClkTck();
+        double deltaJiffies = (double) (currTotalJiffies - prevTotalJiffies);
+        double deltaSeconds = elapsedMs / 1000.0;
+
+        return (deltaJiffies / deltaSeconds) / jiffiesPerSecond * 100.0;
+    }
+
+    //Overengineered when could've just took 100
+    private double getClkTck() {
+        if (clkTck != null) {
+            return clkTck;
+        }
+        try {
+
+            ProcessBuilder pb = new ProcessBuilder("getconf", "CLK_TCK");
+            Process p = pb.start();
+            try (BufferedReader reader = new BufferedReader(new FileReader("/proc/self/status"))) {}
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line = in.readLine();
+                if (line != null) {
+                    clkTck = Double.parseDouble(line.trim());
+                    return clkTck;
+                }
+            }
+            p.waitFor();
+        } catch (Exception e) {
+            // Fallback to standard 100 if getconf fails
+            clkTck = 100.0;
+        }
+        return clkTck;
+    }
+
+    public int getThreadCount()
+            throws IOException {
+
+        return Runtime.getRuntime().availableProcessors();
     }
 
     public void changeConfig(String variable, String value, String name)
