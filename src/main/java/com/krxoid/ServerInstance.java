@@ -236,6 +236,47 @@ public final class ServerInstance {
         }
     }
 
+    public long getCpuUsage()
+            throws IOException {
+        BufferedReader reader = new BufferedReader(new FileReader("/proc/" + process.pid() + "/stat"));
+
+        String line = reader.readLine();
+        if (line != null) {
+            // The command name (field 2) is enclosed in parentheses and may contain spaces.
+            // We must find the last ')' to correctly index the subsequent fields.
+            int lastParenIndex = line.lastIndexOf(')');
+            if (lastParenIndex != -1 && lastParenIndex + 2 < line.length()) {
+                String[] stats = line.substring(lastParenIndex + 2).split("\\s+");
+
+                long utime = Long.parseLong(stats[11]);
+                long stime = Long.parseLong(stats[12]);
+
+                return utime + stime;
+            }
+        }
+
+        throw new NullPointerException("Line cannot be empty");
+    }
+
+    public long getRamUsage()
+            throws ServerManagerException, IOException {
+        BufferedReader reader = new BufferedReader(new FileReader("/proc/" + process.pid() + "/status"));
+        String line;
+        while ((line = reader.readLine()) != null) {
+            if (line.startsWith("VmRSS:")) {
+                // Format: "VmRSS:     12345 kB"
+                String[] parts = line.split("\\s+");
+                if (parts.length >= 2) {
+                    long kb = Long.parseLong(parts[1]);
+                    return kb * 1024L; // Convert kB to bytes
+                }
+            }
+        }
+
+        throw new ServerManagerException("Line cannot be empty");
+    }
+
+
     private void startOutputReader() {
 
         Thread thread =
