@@ -204,21 +204,47 @@ public final class CommandDispatcher {
     protected void fetchVersions()
             throws IOException, InterruptedException {
 
-        Files.createDirectories( VERSIONS_FILE.getParent() );
+        Files.createDirectories(VERSIONS_FILE.getParent());
 
-        HttpRequest request = HttpRequest.newBuilder( BDS_VERSIONS_URI )
-                .GET()
-                .build();
+        HttpClient client = HttpClient.newHttpClient();
 
-        HttpResponse<Path> response = HttpClient.newHttpClient().send(
-                request,
-                HttpResponse.BodyHandlers.ofFile(VERSIONS_FILE)
-        );
+        IOException lastException = null;
 
-        if (response.statusCode() != 200) { Files.deleteIfExists( VERSIONS_FILE );
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            try {
+                HttpRequest request = HttpRequest.newBuilder(BDS_VERSIONS_URI)
+                        .GET()
+                        .build();
 
-            throw new IOException( "Failed to fetch BDS versions: HTTP " + response.statusCode() );
+                HttpResponse<Path> response = client.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofFile(VERSIONS_FILE)
+                );
+
+                if (response.statusCode() == 200) {
+                    return;
+                }
+
+                Files.deleteIfExists(VERSIONS_FILE);
+
+                lastException = new IOException(
+                        "HTTP " + response.statusCode()
+                );
+
+            } catch (IOException e) {
+                Files.deleteIfExists(VERSIONS_FILE);
+                lastException = e;
+            }
+
+            if (attempt < 5) {
+                Thread.sleep(1000);
+            }
         }
+
+        throw new IOException(
+                "Failed to fetch BDS versions after 5 attempts",
+                lastException
+        );
     }
 
     private String[] getVersions(int range)
