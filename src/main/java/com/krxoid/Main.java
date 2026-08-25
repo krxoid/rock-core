@@ -75,6 +75,7 @@ public final class Main {
                   server backup <name>
                   server delete <name>
                   server import world <server> <path>
+                  server config <server> <variable> <name>
                 
                 Run 'rock' without arguments to enter
                 the interactive Rock Core shell.
