@@ -174,6 +174,12 @@ public final class ServerCommandHandler {
         }
     }
 
+    public boolean isIdle()
+            throws IOException{
+
+        return serverManager.isIdle();
+    }
+
     private void downloadBds(
             String version,
             Path destination
