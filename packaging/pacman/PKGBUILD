@@ -1,7 +1,7 @@
 # Maintainer: Krxoid
 
 pkgname=rock-core
-pkgver=1.2.0
+pkgver=1.3.0
 pkgrel=1
 pkgdesc='Command-line manager for Minecraft Bedrock Dedicated Server instances'
 arch=('any')
@@ -15,7 +15,7 @@ source=(
 )
 
 sha256sums=(
-    'a95b2ce7e3c301a7f5860087ec35c7fedf0a13c733530abba2ee96864aa355a4'
+    '10063681cb7acbc0609a8ff53a12051c794c679f331c7635db0b8a9e2a385ce3'
     'f282147acd9bf86e091b4b8a5d9b64ddd1c22a9890f0ddb27fc35509b2cd2159'
 )
 

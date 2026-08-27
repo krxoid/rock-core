@@ -1,5 +1,5 @@
 Name:           rock-core
-Version:        1.2.0
+Version:        1.0.0
 Release:        1%{?dist}
 Summary:        Minecraft Bedrock Dedicated Server manager
 
@@ -19,7 +19,7 @@ written in Java.
 
 %install
 install -D -m 644 \
-    /home/krxoid/IdeaProjects/rock-core/build/libs/rock-core-1.2.0.jar \
+    /home/krxoid/IdeaProjects/rock-core/build/libs/rock-core-1.0-RELEASE.jar \
     %{buildroot}%{_datadir}/rock-core/rock-core.jar
 
 install -D -m 755 \

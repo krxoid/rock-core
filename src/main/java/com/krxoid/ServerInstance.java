@@ -310,11 +310,10 @@ public final class ServerInstance {
                 if(isAttached) {
                     System.out.print("\r\033[2K");
 
-                    System.out.println(
+                    System.out.print(
                             "[" + name + "] " + line
                     );
 
-                    printPrompt();
                 }
 
                 else {

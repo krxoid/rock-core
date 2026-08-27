@@ -36,3 +36,9 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### Packaging ###
+packaging/pacman/*.tar.zst
+packaging/pacman/*.jar
+packaging/pacman/*.tar.gz
+packaging/apt/*.deb
