@@ -58,6 +58,14 @@ public final class CommandDispatcher {
 
             if (line.equalsIgnoreCase("exit") ||
                     line.equalsIgnoreCase("quit")) {
+                try {
+
+                    if (!serverHandler.isIdle()) System.out.println("Could not exit rock-core: A server is still running");
+                }
+
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
                 break;
             }
 

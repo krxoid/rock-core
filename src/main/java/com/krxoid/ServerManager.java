@@ -15,10 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public final class ServerManager {
 
@@ -58,6 +55,31 @@ public final class ServerManager {
                     e
             );
         }
+    }
+
+    public boolean isIdle()
+            throws IOException {
+
+        List<Path> servers =
+                Files.list(SERVERS_DIR)
+                        .filter(Files::isDirectory)
+                        .sorted(
+                                Comparator.comparing(
+                                        path ->
+                                                path.getFileName()
+                                                        .toString()
+                                )
+                        )
+                        .toList();
+
+        for (int i = 0; i < servers.size(); i++) {
+            if (instances.get(servers.get(i)) == null) {
+                System.out.println(servers.get(i));
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public void listServers()
