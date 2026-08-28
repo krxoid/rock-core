@@ -1,0 +1,9 @@
+Package: rock-core
+Version: 1.0.0
+Section: utils
+Priority: optional
+Architecture: all
+Depends: default-jre
+Maintainer: Krxoid
+Description: Command-line Minecraft Bedrock Dedicated Server manager
+ A CLI-first server management tool written in Java.
