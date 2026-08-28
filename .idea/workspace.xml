@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="24a1c128-6fde-434a-8621-3f185406c069" name="Changes" comment="" />
+    <list default="true" id="24a1c128-6fde-434a-8621-3f185406c069" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/packaging/pacman/PKGBUILD" beforeDir="false" afterPath="$PROJECT_DIR$/packaging/pacman/PKGBUILD" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

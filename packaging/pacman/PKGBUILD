@@ -10,12 +10,12 @@ license=('GPL-3.0-or-later')
 depends=('java-runtime')
 
 source=(
-    "rock-core-${pkgver}.jar::https://github.com/krxoid/rock-core/releases/download/Release/rock-core-${pkgver}.jar"
+    "rock-core-${pkgver}.jar::https://github.com/krxoid/rock-core/releases/download/${pkgver}/rock-core-${pkgver}.jar"
     'rock'
 )
 
 sha256sums=(
-    'd355c7ebd58e31c5ecf2c7c0c99c799646ecf3bbae1d0fa82b2fe9a003239090'
+    '10063681cb7acbc0609a8ff53a12051c794c679f331c7635db0b8a9e2a385ce3'
     'f282147acd9bf86e091b4b8a5d9b64ddd1c22a9890f0ddb27fc35509b2cd2159'
 )
 

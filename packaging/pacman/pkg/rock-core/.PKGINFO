@@ -3,12 +3,12 @@
 pkgname = rock-core
 pkgbase = rock-core
 xdata = pkgtype=pkg
-pkgver = 1.0-1
+pkgver = 1.3.0-1
 pkgdesc = Command-line manager for Minecraft Bedrock Dedicated Server instances
 url = https://github.com/krxoid/rock-core
-builddate = 1786527127
+builddate = 1787908561
 packager = Unknown Packager
-size = 20599
+size = 331513
 arch = any
 license = GPL-3.0-or-later
 depend = java-runtime
