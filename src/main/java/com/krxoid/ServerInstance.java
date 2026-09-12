@@ -14,10 +14,15 @@ public final class ServerInstance {
     private final Path directory;
     private final Path executable;
 
+    /*
+     * Access to process/writer is guarded by lifecycleLock.
+     */
+    private final Object lifecycleLock = new Object();
+
     private Process process;
     private BufferedWriter writer;
 
-    private boolean isAttached;
+    private volatile boolean attached;
 
     public ServerInstance(
             String name,
@@ -41,95 +46,121 @@ public final class ServerInstance {
     }
 
     public boolean isRunning() {
-        return process != null && process.isAlive();
+        synchronized (lifecycleLock) {
+            return process != null && process.isAlive();
+        }
     }
 
     public long getPid() {
-        if (!isRunning()) {
-            return -1;
-        }
+        synchronized (lifecycleLock) {
+            if (process == null || !process.isAlive()) {
+                return -1;
+            }
 
-        return process.pid();
+            return process.pid();
+        }
     }
 
     public void start() throws ServerManagerException {
-        if (isRunning()) {
-            throw new ServerManagerException(
-                    "Server '" + name + "' is already running."
-            );
-        }
 
-        if (!Files.exists(executable)) {
-            throw new ServerManagerException(
-                    "Minecraft Bedrock server executable not found:\n" +
-                            executable
-            );
-        }
+        synchronized (lifecycleLock) {
 
-        if (!Files.isExecutable(executable)) {
-            throw new ServerManagerException(
-                    "Minecraft Bedrock server executable is not executable:\n" +
-                            executable
-            );
-        }
+            if (process != null && process.isAlive()) {
+                throw new ServerManagerException(
+                        "Server '" + name + "' is already running."
+                );
+            }
 
-        try {
-            ProcessBuilder builder =
-                    new ProcessBuilder(
-                            executable.toAbsolutePath().toString()
-                    );
+            if (!Files.exists(executable)) {
+                throw new ServerManagerException(
+                        "Minecraft Bedrock server executable not found:\n" +
+                                executable
+                );
+            }
 
-            builder.directory(directory.toFile());
-            builder.redirectErrorStream(true);
+            if (!Files.isExecutable(executable)) {
+                throw new ServerManagerException(
+                        "Minecraft Bedrock server executable is not executable:\n" +
+                                executable
+                );
+            }
 
-            process = builder.start();
+            try {
 
-            writer =
-                    new BufferedWriter(
-                            new OutputStreamWriter(
-                                    process.getOutputStream(),
-                                    StandardCharsets.UTF_8
-                            )
-                    );
+                ProcessBuilder builder =
+                        new ProcessBuilder(
+                                executable.toAbsolutePath().toString()
+                        );
 
-            startOutputReader();
+                builder.directory(directory.toFile());
+                builder.redirectErrorStream(true);
 
-        } catch (IOException e) {
-            process = null;
-            writer = null;
+                Process newProcess = builder.start();
 
-            throw new ServerManagerException(
-                    "Failed to start server '" + name + "'.",
-                    e
-            );
+                BufferedWriter newWriter =
+                        new BufferedWriter(
+                                new OutputStreamWriter(
+                                        newProcess.getOutputStream(),
+                                        StandardCharsets.UTF_8
+                                )
+                        );
+
+                process = newProcess;
+                writer = newWriter;
+
+                startOutputReader(newProcess);
+
+            } catch (IOException e) {
+
+                process = null;
+                writer = null;
+
+                throw new ServerManagerException(
+                        "Failed to start server '" + name + "'.",
+                        e
+                );
+            }
         }
     }
 
     public void stop() throws ServerManagerException {
-        if (!isRunning()) {
-            throw new ServerManagerException(
-                    "Server '" + name + "' is not running."
-            );
+
+        final Process currentProcess;
+
+        synchronized (lifecycleLock) {
+
+            currentProcess = process;
+
+            if (currentProcess == null ||
+                    !currentProcess.isAlive()) {
+
+                throw new ServerManagerException(
+                        "Server '" + name + "' is not running."
+                );
+            }
         }
 
         try {
+
             sendCommand("stop");
 
-            if (!process.waitFor(
+            if (!currentProcess.waitFor(
                     15,
                     TimeUnit.SECONDS
             )) {
-                process.destroy();
 
-                if (!process.waitFor(
+                currentProcess.destroy();
+
+                if (!currentProcess.waitFor(
                         5,
                         TimeUnit.SECONDS
                 )) {
-                    process.destroyForcibly();
+                    currentProcess.destroyForcibly();
                 }
             }
 
         } catch (InterruptedException e) {
+
             Thread.currentThread().interrupt();
 
             throw new ServerManagerException(
@@ -138,13 +169,26 @@ public final class ServerInstance {
                             "'.",
                     e
             );
+
         } finally {
-            process = null;
-            writer = null;
+
+            /*
+             * Do not blindly null the process here.
+             *
+             * The output reader owns cleanup of the process state.
+             */
+            synchronized (lifecycleLock) {
+
+                if (process == currentProcess) {
+                    process = null;
+                    writer = null;
+                }
+            }
         }
     }
 
     public void restart() throws ServerManagerException {
+
         if (isRunning()) {
             stop();
         }
@@ -156,40 +200,68 @@ public final class ServerInstance {
             String command
     ) throws ServerManagerException {
 
-        if (!isRunning()) {
-            throw new ServerManagerException(
-                    "Server '" + name + "' is not running."
-            );
-        }
-
         if (command == null || command.isBlank()) {
             throw new ServerManagerException(
                     "Command cannot be empty."
             );
         }
 
-        try {
-            writer.write(command);
-            writer.newLine();
-            writer.flush();
+        synchronized (lifecycleLock) {
 
-        } catch (IOException e) {
-            throw new ServerManagerException(
-                    "Failed to send command to server '" +
-                            name +
-                            "'.",
-                    e
-            );
+            if (process == null ||
+                    !process.isAlive()) {
+
+                throw new ServerManagerException(
+                        "Server '" + name + "' is not running."
+                );
+            }
+
+            if (writer == null) {
+                throw new ServerManagerException(
+                        "Server '" + name + "' input stream is unavailable."
+                );
+            }
+
+            try {
+
+                writer.write(command);
+                writer.newLine();
+                writer.flush();
+
+            } catch (IOException e) {
+
+                throw new ServerManagerException(
+                        "Failed to send command to server '" +
+                                name +
+                                "'.",
+                        e
+                );
+            }
         }
     }
 
     public void attachConsole()
             throws ServerManagerException {
 
-        if (!isRunning()) {
-            throw new ServerManagerException(
-                    "Server '" + name + "' is not running."
-            );
+        synchronized (lifecycleLock) {
+
+            if (process == null ||
+                    !process.isAlive()) {
+
+                throw new ServerManagerException(
+                        "Server '" + name + "' is not running."
+                );
+            }
+
+            if (attached) {
+                throw new ServerManagerException(
+                        "Already attached to server '" +
+                                name +
+                                "'."
+                );
+            }
+
+            attached = true;
         }
 
         System.out.println(
@@ -204,9 +276,14 @@ public final class ServerInstance {
                 "Press Ctrl+D to detach."
         );
 
-        System.out.print("[" + name + "] "); printPrompt();
+        System.out.print(
+                "[" + name + "] "
+        );
+
+        printPrompt();
 
         try {
+
             BufferedReader input =
                     new BufferedReader(
                             new InputStreamReader(
@@ -221,7 +298,13 @@ public final class ServerInstance {
                     (line = input.readLine()) != null) {
 
                 if (line.isBlank()) {
-                    System.out.print("[" + name + "] "); printPrompt();
+
+                    System.out.print(
+                            "[" + name + "] "
+                    );
+
+                    printPrompt();
+
                     continue;
                 }
 
@@ -229,59 +312,169 @@ public final class ServerInstance {
             }
 
         } catch (IOException e) {
+
             throw new ServerManagerException(
                     "Console input failed.",
                     e
             );
+
+        } finally {
+
+            attached = false;
+
+            System.out.println();
+
+            System.out.println(
+                    "Detached from '" + name + "'."
+            );
         }
     }
 
-    public long getCpuUsage()
-            throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader("/proc/" + process.pid() + "/stat"));
+    /**
+     * Returns the total CPU time consumed by the server process
+     * in nanoseconds.
+     *
+     * This is NOT a percentage.
+     */
+    public long getCpuTime()
+            throws ServerManagerException, IOException {
 
-        String line = reader.readLine();
-        if (line != null) {
-            // The command name (field 2) is enclosed in parentheses and may contain spaces.
-            // We must find the last ')' to correctly index the subsequent fields.
-            int lastParenIndex = line.lastIndexOf(')');
-            if (lastParenIndex != -1 && lastParenIndex + 2 < line.length()) {
-                String[] stats = line.substring(lastParenIndex + 2).split("\\s+");
+        final long pid = getPid();
 
-                long utime = Long.parseLong(stats[11]);
-                long stime = Long.parseLong(stats[12]);
+        if (pid == -1) {
+            throw new ServerManagerException(
+                    "Server '" + name + "' is not running."
+            );
+        }
 
-                return utime + stime;
+        Path stat =
+                Path.of(
+                        "/proc",
+                        Long.toString(pid),
+                        "stat"
+                );
+
+        try (BufferedReader reader =
+                     Files.newBufferedReader(
+                             stat,
+                             StandardCharsets.UTF_8
+                     )) {
+
+            String line = reader.readLine();
+
+            if (line == null || line.isBlank()) {
+                throw new ServerManagerException(
+                        "Unable to read CPU statistics for server '" +
+                                name +
+                                "'."
+                );
             }
-        }
 
-        throw new NullPointerException("Line cannot be empty");
+            /*
+             * /proc/[pid]/stat:
+             *
+             * field 14 = utime
+             * field 15 = stime
+             *
+             * The process name is enclosed in parentheses,
+             * so find the final ')' first.
+             */
+            int lastParen =
+                    line.lastIndexOf(')');
+
+            if (lastParen == -1 ||
+                    lastParen + 2 >= line.length()) {
+
+                throw new ServerManagerException(
+                        "Invalid /proc stat data for server '" +
+                                name +
+                                "'."
+                );
+            }
+
+            String[] fields =
+                    line.substring(lastParen + 2)
+                            .split("\\s+");
+
+            /*
+             * After removing fields 1 and 2:
+             *
+             * fields[11] = original field 14 (utime)
+             * fields[12] = original field 15 (stime)
+             */
+            long utime =
+                    Long.parseLong(fields[11]);
+
+            long stime =
+                    Long.parseLong(fields[12]);
+
+            return utime + stime;
+        }
     }
 
+    /**
+     * Returns resident memory usage in bytes.
+     */
     public long getRamUsage()
             throws ServerManagerException, IOException {
-        BufferedReader reader = new BufferedReader(new FileReader("/proc/" + process.pid() + "/status"));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            if (line.startsWith("VmRSS:")) {
-                // Format: "VmRSS:     12345 kB"
-                String[] parts = line.split("\\s+");
-                if (parts.length >= 2) {
-                    long kb = Long.parseLong(parts[1]);
-                    return kb * 1024L; // Convert kB to bytes
+
+        final long pid = getPid();
+
+        if (pid == -1) {
+            throw new ServerManagerException(
+                    "Server '" + name + "' is not running."
+            );
+        }
+
+        Path status =
+                Path.of(
+                        "/proc",
+                        Long.toString(pid),
+                        "status"
+                );
+
+        try (BufferedReader reader =
+                     Files.newBufferedReader(
+                             status,
+                             StandardCharsets.UTF_8
+                     )) {
+
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+
+                if (!line.startsWith("VmRSS:")) {
+                    continue;
                 }
+
+                String[] parts =
+                        line.trim().split("\\s+");
+
+                if (parts.length < 2) {
+                    break;
+                }
+
+                long kb =
+                        Long.parseLong(parts[1]);
+
+                return kb * 1024L;
             }
         }
 
-        throw new ServerManagerException("Line cannot be empty");
+        throw new ServerManagerException(
+                "Unable to read RAM usage for server '" +
+                        name +
+                        "'."
+        );
     }
 
-
-    private void startOutputReader() {
+    private void startOutputReader(
+            Process serverProcess
+    ) {
 
         Thread thread =
                 new Thread(
-                        this::readOutput
+                        () -> readOutput(serverProcess)
                 );
 
         thread.setName(
@@ -292,48 +485,66 @@ public final class ServerInstance {
         thread.start();
     }
 
-    private void readOutput() {
+    private void readOutput(
+            Process serverProcess
+    ) {
 
-        try {
-            BufferedReader reader =
-                    new BufferedReader(
-                            new InputStreamReader(
-                                    process.getInputStream(),
-                                    StandardCharsets.UTF_8
-                            )
-                    );
+        try (BufferedReader reader =
+                     new BufferedReader(
+                             new InputStreamReader(
+                                     serverProcess.getInputStream(),
+                                     StandardCharsets.UTF_8
+                             )
+                     )) {
 
             String line;
 
             while ((line = reader.readLine()) != null) {
 
-                if(isAttached) {
-                    System.out.print("\r\033[2K");
+                if (attached) {
+
+                    System.out.print(
+                            "\r\033[2K"
+                    );
 
                     System.out.print(
                             "[" + name + "] " + line
                     );
 
-                }
+                } else {
 
-                else {
-                    System.out.print("\r\033[2K");
+                    System.out.print(
+                            "\r\033[2K"
+                    );
 
                     System.out.println(
                             "[" + name + "] " + line
                     );
 
-                    System.out.print("[" + name + "] "); printPrompt();
+                    printPrompt();
                 }
             }
 
         } catch (IOException ignored) {
+
             /*
-             * The process may close its output stream during shutdown.
+             * The process may close its output stream
+             * during normal shutdown.
              */
+
         } finally {
-            process = null;
-            writer = null;
+
+            /*
+             * Only clean up if this is still the same
+             * process that this reader belongs to.
+             */
+            synchronized (lifecycleLock) {
+
+                if (process == serverProcess) {
+                    process = null;
+                    writer = null;
+                }
+            }
         }
     }
 }

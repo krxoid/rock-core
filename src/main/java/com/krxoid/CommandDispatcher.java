@@ -71,8 +71,7 @@ public final class CommandDispatcher {
 
             if (line.equalsIgnoreCase("help")) {
                 printHelp();
-                System.out.print("rock > ");
-                System.out.flush();
+                printPrompt();
                 continue;
             }
 
@@ -247,6 +246,7 @@ public final class CommandDispatcher {
             if (attempt < 5) {
                 Thread.sleep(1000);
             }
+            System.out.println("Could not fetch BDS versions. Tried: " + attempt);
         }
 
         throw new IOException(

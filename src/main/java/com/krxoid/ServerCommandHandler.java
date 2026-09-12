@@ -648,15 +648,6 @@ public final class ServerCommandHandler {
 
         try {
             serverManager.stopServer(name);
-
-            System.out.println(
-                    "Server '" +
-                            name +
-                            "' stopped."
-            );
-
-            printPrompt();
-
             return 0;
 
         } catch (ServerManagerException e) {
