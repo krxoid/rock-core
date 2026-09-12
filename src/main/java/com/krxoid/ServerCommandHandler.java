@@ -12,12 +12,9 @@ import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-
-import static com.krxoid.ServerManager.ROOT;
+import org.jline.reader.LineReader;
 
 public final class ServerCommandHandler {
-
-    public static final String prompt = "rock > ";
 
     private static final String BDS_URL =
             "https://www.minecraft.net/bedrockdedicatedserver/bin-linux/"
@@ -28,9 +25,9 @@ public final class ServerCommandHandler {
     private final HttpClient httpClient =
             HttpClient.newHttpClient();
 
-    public ServerCommandHandler() {
+    public ServerCommandHandler(LineReader lineReader) {
         this.serverManager =
-                new ServerManager();
+                new ServerManager(lineReader);
     }
 
     public int handle(String[] args)
@@ -158,7 +155,7 @@ public final class ServerCommandHandler {
 
             case "help":
                 printServerHelp();
-                printPrompt();
+
                 return 0;
 
             default:
@@ -169,7 +166,7 @@ public final class ServerCommandHandler {
                 );
 
                 printServerHelp();
-                printPrompt();
+                
 
                 return 1;
         }
@@ -315,14 +312,14 @@ public final class ServerCommandHandler {
                             "."
             );
 
-            printPrompt();
+            
 
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-            printPrompt();
+            
             return 1;
 
         } catch (Exception e) {
@@ -334,7 +331,7 @@ public final class ServerCommandHandler {
                     )
             );
 
-            printPrompt();
+            
 
             return 1;
         }
@@ -396,7 +393,7 @@ public final class ServerCommandHandler {
                         "  world"
                 );
 
-                printPrompt();
+                
 
                 return 1;
         }
@@ -613,35 +610,25 @@ public final class ServerCommandHandler {
 
         try {
             serverManager.listServers();
-            printPrompt();
+            
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-            printPrompt();
+            
 
             return 1;
         }
     }
 
     public int start(String name) {
-
         try {
             serverManager.startServer(name);
-
-            System.out.println(
-                    "Server '" +
-                            name +
-                            "' started."
-            );
-
+            System.out.println("Server '" + name + "' started.");
             return 0;
-
         } catch (ServerManagerException e) {
-
             printError(e);
-            printPrompt();
             return 1;
         }
     }
@@ -656,7 +643,7 @@ public final class ServerCommandHandler {
 
             printError(e);
 
-            printPrompt();
+            
 
             return 1;
         }
@@ -667,13 +654,13 @@ public final class ServerCommandHandler {
         try {
 
             serverManager.restartServer(name);
-            printPrompt();
+            
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-            printPrompt();
+            
             return 1;
         }
     }
@@ -682,13 +669,13 @@ public final class ServerCommandHandler {
 
         try {
             serverManager.printStatus(name);
-            printPrompt();
+            
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-            printPrompt();
+            
             return 1;
         }
     }
@@ -697,13 +684,13 @@ public final class ServerCommandHandler {
 
         try {
             serverManager.printPlayers(name);
-            printPrompt();
+            
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-            printPrompt();
+            
             return 1;
         }
     }
@@ -717,7 +704,7 @@ public final class ServerCommandHandler {
         } catch (ServerManagerException e) {
 
             printError(e);
-            printPrompt();
+            
             return 1;
         }
     }
@@ -748,13 +735,13 @@ public final class ServerCommandHandler {
         try {
 
             serverManager.createBackup(name);
-            printPrompt();
+            
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-            printPrompt();
+            
             return 1;
         }
     }
@@ -764,13 +751,13 @@ public final class ServerCommandHandler {
         try {
 
             serverManager.deleteServer(name);
-            printPrompt();
+            
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-            printPrompt();
+            
             return 1;
         }
     }
@@ -780,7 +767,7 @@ public final class ServerCommandHandler {
         try {
 
             serverManager.changeConfig(args[1], args[2], args[0]);
-            printPrompt();
+            
             return 0;
 
         }
@@ -788,7 +775,7 @@ public final class ServerCommandHandler {
         catch (ServerManagerException | IOException e){
 
             e.printStackTrace(System.err);
-            printPrompt();
+            
             return 1;
 
         }
@@ -893,11 +880,6 @@ public final class ServerCommandHandler {
                 "Error: " +
                         e.getMessage()
         );
-    }
-
-    public static void printPrompt(){
-        System.out.print(prompt);
-        System.out.flush();
     }
 
 }

@@ -1,36 +1,44 @@
 package com.krxoid;
 
-import java.io.*;
+import org.jline.reader.EndOfFileException;
+import org.jline.reader.LineReader;
+import org.jline.reader.UserInterruptException;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
-
-import static com.krxoid.ServerCommandHandler.printPrompt;
 
 public final class ServerInstance {
 
     private final String name;
     private final Path directory;
     private final Path executable;
+    private final LineReader lineReader;
 
-    /*
-     * Access to process/writer is guarded by lifecycleLock.
-     */
-    private final Object lifecycleLock = new Object();
+    private final Object lifecycleLock =
+            new Object();
 
     private Process process;
     private BufferedWriter writer;
-
-    private volatile boolean attached;
+    private boolean attached;
 
     public ServerInstance(
             String name,
-            Path directory
+            Path directory,
+            LineReader lineReader
     ) {
         this.name = name;
         this.directory = directory;
-        this.executable = directory.resolve("bedrock_server");
+        this.executable =
+                directory.resolve("bedrock_server");
+        this.lineReader = lineReader;
     }
 
     public String getName() {
@@ -47,13 +55,23 @@ public final class ServerInstance {
 
     public boolean isRunning() {
         synchronized (lifecycleLock) {
-            return process != null && process.isAlive();
+            return process != null &&
+                    process.isAlive();
+        }
+    }
+
+    public boolean isAttached() {
+        synchronized (lifecycleLock) {
+            return attached;
         }
     }
 
     public long getPid() {
+
         synchronized (lifecycleLock) {
-            if (process == null || !process.isAlive()) {
+
+            if (process == null ||
+                    !process.isAlive()) {
                 return -1;
             }
 
@@ -61,17 +79,23 @@ public final class ServerInstance {
         }
     }
 
-    public void start() throws ServerManagerException {
+    public void start()
+            throws ServerManagerException {
 
         synchronized (lifecycleLock) {
 
-            if (process != null && process.isAlive()) {
+            if (process != null &&
+                    process.isAlive()) {
+
                 throw new ServerManagerException(
-                        "Server '" + name + "' is already running."
+                        "Server '" +
+                                name +
+                                "' is already running."
                 );
             }
 
             if (!Files.exists(executable)) {
+
                 throw new ServerManagerException(
                         "Minecraft Bedrock server executable not found:\n" +
                                 executable
@@ -79,6 +103,7 @@ public final class ServerInstance {
             }
 
             if (!Files.isExecutable(executable)) {
+
                 throw new ServerManagerException(
                         "Minecraft Bedrock server executable is not executable:\n" +
                                 executable
@@ -89,13 +114,19 @@ public final class ServerInstance {
 
                 ProcessBuilder builder =
                         new ProcessBuilder(
-                                executable.toAbsolutePath().toString()
+                                executable
+                                        .toAbsolutePath()
+                                        .toString()
                         );
 
-                builder.directory(directory.toFile());
+                builder.directory(
+                        directory.toFile()
+                );
+
                 builder.redirectErrorStream(true);
 
-                Process newProcess = builder.start();
+                Process newProcess =
+                        builder.start();
 
                 BufferedWriter newWriter =
                         new BufferedWriter(
@@ -107,6 +138,7 @@ public final class ServerInstance {
 
                 process = newProcess;
                 writer = newWriter;
+                attached = false;
 
                 startOutputReader(newProcess);
 
@@ -114,16 +146,20 @@ public final class ServerInstance {
 
                 process = null;
                 writer = null;
+                attached = false;
 
                 throw new ServerManagerException(
-                        "Failed to start server '" + name + "'.",
+                        "Failed to start server '" +
+                                name +
+                                "'.",
                         e
                 );
             }
         }
     }
 
-    public void stop() throws ServerManagerException {
+    public void stop()
+            throws ServerManagerException {
 
         final Process currentProcess;
 
@@ -135,7 +171,9 @@ public final class ServerInstance {
                     !currentProcess.isAlive()) {
 
                 throw new ServerManagerException(
-                        "Server '" + name + "' is not running."
+                        "Server '" +
+                                name +
+                                "' is not running."
                 );
             }
         }
@@ -155,7 +193,13 @@ public final class ServerInstance {
                         5,
                         TimeUnit.SECONDS
                 )) {
+
                     currentProcess.destroyForcibly();
+
+                    currentProcess.waitFor(
+                            5,
+                            TimeUnit.SECONDS
+                    );
                 }
             }
 
@@ -172,22 +216,20 @@ public final class ServerInstance {
 
         } finally {
 
-            /*
-             * Do not blindly null the process here.
-             *
-             * The output reader owns cleanup of the process state.
-             */
             synchronized (lifecycleLock) {
 
                 if (process == currentProcess) {
+
                     process = null;
                     writer = null;
+                    attached = false;
                 }
             }
         }
     }
 
-    public void restart() throws ServerManagerException {
+    public void restart()
+            throws ServerManagerException {
 
         if (isRunning()) {
             stop();
@@ -200,7 +242,9 @@ public final class ServerInstance {
             String command
     ) throws ServerManagerException {
 
-        if (command == null || command.isBlank()) {
+        if (command == null ||
+                command.isBlank()) {
+
             throw new ServerManagerException(
                     "Command cannot be empty."
             );
@@ -212,13 +256,18 @@ public final class ServerInstance {
                     !process.isAlive()) {
 
                 throw new ServerManagerException(
-                        "Server '" + name + "' is not running."
+                        "Server '" +
+                                name +
+                                "' is not running."
                 );
             }
 
             if (writer == null) {
+
                 throw new ServerManagerException(
-                        "Server '" + name + "' input stream is unavailable."
+                        "Server '" +
+                                name +
+                                "' input stream is unavailable."
                 );
             }
 
@@ -249,11 +298,14 @@ public final class ServerInstance {
                     !process.isAlive()) {
 
                 throw new ServerManagerException(
-                        "Server '" + name + "' is not running."
+                        "Server '" +
+                                name +
+                                "' is not running."
                 );
             }
 
             if (attached) {
+
                 throw new ServerManagerException(
                         "Already attached to server '" +
                                 name +
@@ -264,46 +316,68 @@ public final class ServerInstance {
             attached = true;
         }
 
-        System.out.println(
-                "Attached to '" + name + "'."
+        lineReader.printAbove(
+                "Attached to '" +
+                        name +
+                        "'."
         );
 
-        System.out.println(
+        lineReader.printAbove(
                 "Type commands directly."
         );
 
-        System.out.println(
+        lineReader.printAbove(
                 "Press Ctrl+D to detach."
         );
 
-        System.out.print(
-                "[" + name + "] "
-        );
-
-        printPrompt();
-
         try {
 
-            BufferedReader input =
-                    new BufferedReader(
-                            new InputStreamReader(
-                                    System.in,
-                                    StandardCharsets.UTF_8
-                            )
-                    );
+            while (isRunning()) {
 
-            String line;
+                final String line;
 
-            while (isRunning() &&
-                    (line = input.readLine()) != null) {
+                try {
+
+                    line =
+                            lineReader.readLine(
+                                    "[" +
+                                            name +
+                                            "] rock > "
+                            );
+
+                } catch (UserInterruptException e) {
+
+                    /*
+                     * Ctrl+C only cancels the current
+                     * command line.
+                     */
+                    lineReader.printAbove("^C");
+                    continue;
+
+                } catch (EndOfFileException e) {
+
+                    /*
+                     * Ctrl+D detaches.
+                     */
+                    break;
+                }
+
+                if (line == null) {
+                    break;
+                }
 
                 if (line.isBlank()) {
+                    continue;
+                }
 
-                    System.out.print(
-                            "[" + name + "] "
+                if (line.equalsIgnoreCase("stop")) {
+
+                    lineReader.printAbove(
+                            "To stop the server, detach from the " +
+                                    "console and type 'server stop " +
+                                    name +
+                                    "'"
                     );
-
-                    printPrompt();
 
                     continue;
                 }
@@ -311,118 +385,65 @@ public final class ServerInstance {
                 sendCommand(line);
             }
 
-        } catch (IOException e) {
-
-            throw new ServerManagerException(
-                    "Console input failed.",
-                    e
-            );
-
         } finally {
 
-            attached = false;
+            synchronized (lifecycleLock) {
+                attached = false;
+            }
 
-            System.out.println();
-
-            System.out.println(
-                    "Detached from '" + name + "'."
+            lineReader.printAbove(
+                    "Detached from '" +
+                            name +
+                            "'."
             );
         }
     }
 
-    /**
-     * Returns the total CPU time consumed by the server process
-     * in nanoseconds.
-     *
-     * This is NOT a percentage.
-     */
     public long getCpuTime()
-            throws ServerManagerException, IOException {
+            throws ServerManagerException {
 
-        final long pid = getPid();
+        final Process currentProcess;
 
-        if (pid == -1) {
-            throw new ServerManagerException(
-                    "Server '" + name + "' is not running."
-            );
-        }
+        synchronized (lifecycleLock) {
 
-        Path stat =
-                Path.of(
-                        "/proc",
-                        Long.toString(pid),
-                        "stat"
-                );
+            currentProcess = process;
 
-        try (BufferedReader reader =
-                     Files.newBufferedReader(
-                             stat,
-                             StandardCharsets.UTF_8
-                     )) {
-
-            String line = reader.readLine();
-
-            if (line == null || line.isBlank()) {
-                throw new ServerManagerException(
-                        "Unable to read CPU statistics for server '" +
-                                name +
-                                "'."
-                );
-            }
-
-            /*
-             * /proc/[pid]/stat:
-             *
-             * field 14 = utime
-             * field 15 = stime
-             *
-             * The process name is enclosed in parentheses,
-             * so find the final ')' first.
-             */
-            int lastParen =
-                    line.lastIndexOf(')');
-
-            if (lastParen == -1 ||
-                    lastParen + 2 >= line.length()) {
+            if (currentProcess == null ||
+                    !currentProcess.isAlive()) {
 
                 throw new ServerManagerException(
-                        "Invalid /proc stat data for server '" +
+                        "Server '" +
                                 name +
-                                "'."
+                                "' is not running."
                 );
             }
-
-            String[] fields =
-                    line.substring(lastParen + 2)
-                            .split("\\s+");
-
-            /*
-             * After removing fields 1 and 2:
-             *
-             * fields[11] = original field 14 (utime)
-             * fields[12] = original field 15 (stime)
-             */
-            long utime =
-                    Long.parseLong(fields[11]);
-
-            long stime =
-                    Long.parseLong(fields[12]);
-
-            return utime + stime;
         }
+
+        return currentProcess.info()
+                .totalCpuDuration()
+                .map(Duration::toNanos)
+                .orElseThrow(
+                        () ->
+                                new ServerManagerException(
+                                        "Unable to read CPU statistics " +
+                                                "for server '" +
+                                                name +
+                                                "'."
+                                )
+                );
     }
 
-    /**
-     * Returns resident memory usage in bytes.
-     */
     public long getRamUsage()
-            throws ServerManagerException, IOException {
+            throws ServerManagerException {
 
         final long pid = getPid();
 
         if (pid == -1) {
+
             throw new ServerManagerException(
-                    "Server '" + name + "' is not running."
+                    "Server '" +
+                            name +
+                            "' is not running."
             );
         }
 
@@ -448,7 +469,8 @@ public final class ServerInstance {
                 }
 
                 String[] parts =
-                        line.trim().split("\\s+");
+                        line.trim()
+                                .split("\\s+");
 
                 if (parts.length < 2) {
                     break;
@@ -459,6 +481,18 @@ public final class ServerInstance {
 
                 return kb * 1024L;
             }
+
+        } catch (
+                IOException |
+                NumberFormatException e
+        ) {
+
+            throw new ServerManagerException(
+                    "Unable to read RAM usage for server '" +
+                            name +
+                            "'.",
+                    e
+            );
         }
 
         throw new ServerManagerException(
@@ -474,11 +508,15 @@ public final class ServerInstance {
 
         Thread thread =
                 new Thread(
-                        () -> readOutput(serverProcess)
+                        () ->
+                                readOutput(
+                                        serverProcess
+                                )
                 );
 
         thread.setName(
-                "rock-core-server-" + name
+                "rock-core-server-" +
+                        name
         );
 
         thread.setDaemon(true);
@@ -489,60 +527,51 @@ public final class ServerInstance {
             Process serverProcess
     ) {
 
-        try (BufferedReader reader =
-                     new BufferedReader(
-                             new InputStreamReader(
-                                     serverProcess.getInputStream(),
-                                     StandardCharsets.UTF_8
-                             )
-                     )) {
+        try (
+                BufferedReader reader =
+                        new BufferedReader(
+                                new InputStreamReader(
+                                        serverProcess.getInputStream(),
+                                        StandardCharsets.UTF_8
+                                )
+                        )
+        ) {
 
             String line;
 
             while ((line = reader.readLine()) != null) {
 
-                if (attached) {
-
-                    System.out.print(
-                            "\r\033[2K"
-                    );
-
-                    System.out.print(
-                            "[" + name + "] " + line
-                    );
-
-                } else {
-
-                    System.out.print(
-                            "\r\033[2K"
-                    );
-
-                    System.out.println(
-                            "[" + name + "] " + line
-                    );
-
-                    printPrompt();
-                }
+                /*
+                 * ALWAYS go through JLine.
+                 *
+                 * This is important even when we're NOT
+                 * attached to the server console, because
+                 * the main `rock >` prompt may currently
+                 * be waiting for input.
+                 */
+                lineReader.printAbove(
+                        "[" +
+                                name +
+                                "] " +
+                                line
+                );
             }
 
         } catch (IOException ignored) {
 
             /*
-             * The process may close its output stream
-             * during normal shutdown.
+             * Normal during process shutdown.
              */
 
         } finally {
 
-            /*
-             * Only clean up if this is still the same
-             * process that this reader belongs to.
-             */
             synchronized (lifecycleLock) {
 
                 if (process == serverProcess) {
+
                     process = null;
                     writer = null;
+                    attached = false;
                 }
             }
         }

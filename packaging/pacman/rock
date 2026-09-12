@@ -1,2 +1,6 @@
 #!/bin/sh
-exec java -jar /usr/share/rock-core/rock-core.jar "$@"
+
+exec java \
+    --enable-native-access=ALL-UNNAMED \
+    -Dorg.jline.utils.Log.level=DEBUG \
+    -jar /usr/share/rock-core/rock-core.jar "$@"
