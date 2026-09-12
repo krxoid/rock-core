@@ -73,7 +73,7 @@ public final class ServerManager {
                         .toList();
 
         for (int i = 0; i < servers.size(); i++) {
-            if (instances.get(servers.get(i)) == null) {
+            if (instances.get(servers.get(i)) != null) {
                 System.out.println(servers.get(i));
                 return false;
             }
@@ -257,12 +257,12 @@ public final class ServerManager {
                                 server.getRamUsage()/(1024*1024) + "MB"
                 );
 
-                long prevTotalJiffies = server.getCpuUsage();
+                long prevTotalJiffies = server.getCpuTime();
                 Thread.sleep(CpuSamplingIntervalTime);
 
                 System.out.println(
                         "Cpu: " +
-                                calculateCpuUsage(prevTotalJiffies, server.getCpuUsage(), CpuSamplingIntervalTime)/getThreadCount() + "\n"
+                                calculateCpuUsage(prevTotalJiffies, server.getCpuTime(), CpuSamplingIntervalTime)/getThreadCount() + "\n"
 
                 );
             }
