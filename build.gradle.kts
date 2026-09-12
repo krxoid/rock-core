@@ -13,6 +13,8 @@ repositories {
 
 dependencies {
     implementation("com.google.code.gson:gson:2.13.1")
+    implementation("org.jline:jline:3.30.6")
+    implementation("org.jline:jline-terminal-ffm:3.30.6")
 
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")

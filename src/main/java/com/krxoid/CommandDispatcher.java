@@ -1,5 +1,15 @@
 package com.krxoid;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import org.jline.reader.EndOfFileException;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.UserInterruptException;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -9,81 +19,133 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Scanner;
-import java.util.stream.IntStream;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
-import static com.krxoid.ServerCommandHandler.printPrompt;
 import static com.krxoid.ServerManager.ROOT;
 
-public final class CommandDispatcher {
+public final class CommandDispatcher implements AutoCloseable {
 
+    public static final String VERSION = "1.3.0";
+
+    public static final Path VERSIONS_FILE =
+            ROOT.resolve("versions.json");
+
+    private static final URI BDS_VERSIONS_URI =
+            URI.create(
+                    "https://raw.githubusercontent.com/" +
+                            "Bedrock-OSS/BDS-Versions/main/versions.json"
+            );
+
+    private static final String PROMPT = "rock > ";
+
+    private final Terminal terminal;
+    private final LineReader lineReader;
     private final ServerCommandHandler serverHandler;
 
-    public static String VERSION = "1.2.0";
-
-    public static Path VERSIONS_FILE = ROOT.resolve("versions.json");
-
-    private static final URI BDS_VERSIONS_URI = URI.create(
-            "https://raw.githubusercontent.com/" + "Bedrock-OSS/BDS-Versions/main/versions.json" );
-
-
     public CommandDispatcher() {
-        this.serverHandler =
-                new ServerCommandHandler();
+
+        try {
+            Files.createDirectories(ROOT);
+
+            Path historyFile =
+                    ROOT.resolve("history");
+
+            terminal =
+                    TerminalBuilder.builder()
+                            .system(true)
+                            .build();
+
+            lineReader =
+                    LineReaderBuilder.builder()
+                            .terminal(terminal)
+                            .appName("rock-core")
+                            .variable(
+                                    LineReader.HISTORY_FILE,
+                                    historyFile
+                            )
+                            .build();
+
+            serverHandler =
+                    new ServerCommandHandler(lineReader);
+
+        } catch (IOException e) {
+
+            throw new IllegalStateException(
+                    "Failed to initialize Rock Core terminal.",
+                    e
+            );
+        }
     }
 
     public void startShell() {
-
-        Scanner scanner = new Scanner(System.in);
 
         System.out.println("Rock Core");
         System.out.println("Type 'help' for a list of commands.");
         System.out.println("Type 'exit' or 'quit' to leave.");
         System.out.println();
 
-        printPrompt();
+        while (true) {
 
-        while (scanner.hasNextLine()) {
+            final String line;
 
-            String line = scanner.nextLine().trim();
+            try {
 
-            if (line.isEmpty()) {
-                printPrompt();
+                line =
+                        lineReader.readLine(PROMPT);
+
+            } catch (UserInterruptException e) {
+
+                /*
+                 * Ctrl+C only cancels the current input line.
+                 * It does NOT terminate rock-core.
+                 */
+                lineReader.printAbove("^C");
+                continue;
+
+            } catch (EndOfFileException e) {
+
+                /*
+                 * Ctrl+D exits the main shell.
+                 */
+                break;
+            }
+
+            if (line == null) {
+                break;
+            }
+
+            String trimmed =
+                    line.trim();
+
+            if (trimmed.isEmpty()) {
                 continue;
             }
 
-            if (line.equalsIgnoreCase("exit") ||
-                    line.equalsIgnoreCase("quit")) {
+            if (trimmed.equalsIgnoreCase("exit") ||
+                    trimmed.equalsIgnoreCase("quit")) {
 
                 try {
+
                     if (serverHandler.isIdle()) {
                         break;
                     }
 
-                    System.out.println(
+                    lineReader.printAbove(
                             "Could not exit rock-core: " +
                                     "A server is still running"
                     );
-                    printPrompt();
 
                 } catch (IOException e) {
-                    e.printStackTrace();
+
+                    lineReader.printAbove(
+                            "Error checking server state: " +
+                                    e.getMessage()
+                    );
                 }
 
                 continue;
             }
 
-            if (line.equalsIgnoreCase("help")) {
-                printHelp();
-                printPrompt();
-                continue;
-            }
-
-            dispatch(parseArguments(line));
+            dispatch(parseArguments(trimmed));
         }
     }
 
@@ -108,58 +170,58 @@ public final class CommandDispatcher {
             switch (command) {
 
                 case "server":
-                    return serverHandler.handle(
-                            commandArgs
-                    );
+                    return serverHandler.handle(commandArgs);
 
                 case "help":
                     printHelp();
-                    printPrompt();
                     return 0;
 
                 case "version":
                     printVersion();
-                    printPrompt();
                     return 0;
 
                 case "cls", "clear":
-                    System.out.print("\033[2J\033[3J\033[H");
-                    printPrompt();
+
+                    terminal.writer().print(
+                            "\033[2J\033[3J\033[H"
+                    );
+
+                    terminal.writer().flush();
+
                     return 0;
 
                 case "versions":
 
-                    try {
-
-                        if (commandArgs.length == 0) throw new IllegalArgumentException("Range not specified");
-
-                        System.out.println(
-                                Arrays.toString(
-                                        getVersions(
-                                                Integer.parseInt(
-                                                        commandArgs[0]
-                                                )
-                                        )
-                                )
+                    if (commandArgs.length == 0) {
+                        System.err.println(
+                                "Range not specified"
                         );
-                        printPrompt();
-                        return 0;
+                        return 1;
                     }
 
-                    catch (IllegalArgumentException e) {
+                    int range =
+                            Integer.parseInt(
+                                    commandArgs[0]
+                            );
 
-                        System.err.println("Range not specified");
-                        printPrompt();
-                        return -1;
-                    }
+                    System.out.println(
+                            Arrays.toString(
+                                    getVersions(range)
+                            )
+                    );
+
+                    return 0;
 
                 case "latest":
 
-                    System.out.println(getLatestVersion());
-                    printPrompt();
+                    System.out.println(
+                            getLatestVersion()
+                    );
+
                     return 0;
 
                 default:
+
                     System.err.println(
                             "Unknown command: " +
                                     args[0]
@@ -168,8 +230,6 @@ public final class CommandDispatcher {
                     System.err.println(
                             "Type 'help' for help."
                     );
-
-                    printPrompt();
 
                     return 1;
             }
@@ -213,48 +273,72 @@ public final class CommandDispatcher {
                   quit
                   cls
                   versions <range>
+                  latest
                 """);
     }
 
     protected void fetchVersions()
             throws IOException, InterruptedException {
 
-        Files.createDirectories(VERSIONS_FILE.getParent());
+        Files.createDirectories(
+                VERSIONS_FILE.getParent()
+        );
 
-        HttpClient client = HttpClient.newHttpClient();
+        HttpClient client =
+                HttpClient.newHttpClient();
 
         IOException lastException = null;
 
         for (int attempt = 1; attempt <= 5; attempt++) {
-            try {
-                HttpRequest request = HttpRequest.newBuilder(BDS_VERSIONS_URI)
-                        .GET()
-                        .build();
 
-                HttpResponse<Path> response = client.send(
-                        request,
-                        HttpResponse.BodyHandlers.ofFile(VERSIONS_FILE)
-                );
+            try {
+
+                HttpRequest request =
+                        HttpRequest.newBuilder(
+                                        BDS_VERSIONS_URI
+                                )
+                                .GET()
+                                .build();
+
+                HttpResponse<Path> response =
+                        client.send(
+                                request,
+                                HttpResponse.BodyHandlers.ofFile(
+                                        VERSIONS_FILE
+                                )
+                        );
 
                 if (response.statusCode() == 200) {
                     return;
                 }
 
-                Files.deleteIfExists(VERSIONS_FILE);
-
-                lastException = new IOException(
-                        "HTTP " + response.statusCode()
+                Files.deleteIfExists(
+                        VERSIONS_FILE
                 );
 
+                lastException =
+                        new IOException(
+                                "HTTP " +
+                                        response.statusCode()
+                        );
+
             } catch (IOException e) {
-                Files.deleteIfExists(VERSIONS_FILE);
+
+                Files.deleteIfExists(
+                        VERSIONS_FILE
+                );
+
                 lastException = e;
             }
 
             if (attempt < 5) {
                 Thread.sleep(1000);
             }
-            System.out.println("Could not fetch BDS versions. Tried: " + attempt);
+
+            System.out.println(
+                    "Could not fetch BDS versions. Tried: " +
+                            attempt
+            );
         }
 
         throw new IOException(
@@ -289,7 +373,10 @@ public final class CommandDispatcher {
                 linux.getAsJsonArray("versions");
 
         int count =
-                Math.min(range, versions.size());
+                Math.min(
+                        range,
+                        versions.size()
+                );
 
         String[] result =
                 new String[count];
@@ -298,30 +385,38 @@ public final class CommandDispatcher {
                 versions.size() - count;
 
         for (int i = 0; i < count; i++) {
+
             result[i] =
                     versions
                             .get(start + i)
                             .getAsString();
         }
 
-        return IntStream.range(0, result.length)
-                .mapToObj(i -> result[result.length - 1 - i])
-                .toArray(String[]::new);
+        String[] reversed =
+                new String[result.length];
 
+        for (int i = 0; i < result.length; i++) {
+            reversed[i] =
+                    result[result.length - 1 - i];
+        }
+
+        return reversed;
     }
 
-    public String getLatestVersion() throws IOException{
+    public String getLatestVersion()
+            throws IOException {
 
-        return Arrays.toString(getVersions(1));
+        return Arrays.toString(
+                getVersions(1)
+        );
     }
 
+    private void printVersion() {
 
-    private void printVersion(){
-
-        System.out.println("v" + VERSION);
-
+        System.out.println(
+                "v" + VERSION
+        );
     }
-
 
     private String[] parseArguments(
             String line
@@ -332,5 +427,23 @@ public final class CommandDispatcher {
                 .split(
                         "\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)"
                 );
+    }
+
+    public LineReader getLineReader() {
+        return lineReader;
+    }
+
+    @Override
+    public void close() {
+
+        try {
+            lineReader.getHistory().save();
+        } catch (IOException ignored) {
+        }
+
+        try {
+            terminal.close();
+        } catch (IOException ignored) {
+        }
     }
 }

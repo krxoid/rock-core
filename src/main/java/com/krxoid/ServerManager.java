@@ -16,6 +16,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import org.jline.reader.LineReader;
 
 public final class ServerManager {
 
@@ -41,11 +42,15 @@ public final class ServerManager {
     private final Map<String, ServerInstance> instances =
             new HashMap<>();
 
+    private final LineReader lineReader;
+
     private static Double clkTck = null;
 
     private static long CpuSamplingIntervalTime = 100; //In ms
 
-    public ServerManager() {
+    public ServerManager(LineReader lineReader) {
+        this.lineReader = lineReader;
+
         try {
             initializeDirectories();
             loadServers();
@@ -468,7 +473,8 @@ public final class ServerManager {
         ServerInstance instance =
                 new ServerInstance(
                         name,
-                        directory
+                        directory,
+                        lineReader
                 );
 
         instances.put(
@@ -492,14 +498,14 @@ public final class ServerManager {
                     .forEach(path -> {
 
                         String name =
-                                path.getFileName()
-                                        .toString();
+                                path.getFileName().toString();
 
                         instances.put(
                                 name,
                                 new ServerInstance(
                                         name,
-                                        path
+                                        path,
+                                        lineReader
                                 )
                         );
                     });
