@@ -322,6 +322,7 @@ public final class ServerCommandHandler {
         } catch (ServerManagerException e) {
 
             printError(e);
+            printPrompt();
             return 1;
 
         } catch (Exception e) {
