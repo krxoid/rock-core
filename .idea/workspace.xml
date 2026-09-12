@@ -5,9 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="24a1c128-6fde-434a-8621-3f185406c069" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/CommandDispatcher.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/CommandDispatcher.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerCommandHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerCommandHandler.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
