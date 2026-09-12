@@ -158,6 +158,7 @@ public final class ServerCommandHandler {
 
             case "help":
                 printServerHelp();
+                printPrompt();
                 return 0;
 
             default:
