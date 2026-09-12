@@ -57,29 +57,10 @@ public final class ServerManager {
         }
     }
 
-    public boolean isIdle()
-            throws IOException {
-
-        List<Path> servers =
-                Files.list(SERVERS_DIR)
-                        .filter(Files::isDirectory)
-                        .sorted(
-                                Comparator.comparing(
-                                        path ->
-                                                path.getFileName()
-                                                        .toString()
-                                )
-                        )
-                        .toList();
-
-        for (int i = 0; i < servers.size(); i++) {
-            if (instances.get(servers.get(i)) != null) {
-                System.out.println(servers.get(i));
-                return false;
-            }
-        }
-
-        return true;
+    public boolean isIdle() {
+        return instances.values()
+                .stream()
+                .noneMatch(ServerInstance::isRunning);
     }
 
     public void listServers()
