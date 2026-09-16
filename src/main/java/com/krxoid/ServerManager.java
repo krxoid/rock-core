@@ -3,16 +3,11 @@ package com.krxoid;
 import com.sun.management.OperatingSystemMXBean;
 
 import javax.swing.*;
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -34,6 +29,12 @@ public final class ServerManager {
     private static final Path BACKUPS_DIR =
             ROOT.resolve("backups");
 
+    private static final Path TEMPORARY_DIR =
+            Path.of(System.getProperty("java.io.tmpdir"), "rock-core");
+
+    private static final Path UPDATE_BACKUPS_DIR =
+            TEMPORARY_DIR.resolve("update_backups");
+
     private static final DateTimeFormatter BACKUP_FORMAT =
             DateTimeFormatter.ofPattern(
                     "yyyyMMdd-HHmmss"
@@ -43,10 +44,6 @@ public final class ServerManager {
             new HashMap<>();
 
     private final LineReader lineReader;
-
-    private static Double clkTck = null;
-
-    private static long CpuSamplingIntervalTime = 100; //In ms
 
     public ServerManager(LineReader lineReader) {
         this.lineReader = lineReader;
@@ -60,6 +57,14 @@ public final class ServerManager {
                     e
             );
         }
+    }
+
+    public Path getUpdateBackupsDir() {
+        return UPDATE_BACKUPS_DIR;
+    }
+
+    public Path getBackupsDir() {
+        return BACKUPS_DIR;
     }
 
     public boolean isIdle() {
@@ -178,6 +183,55 @@ public final class ServerManager {
         }
     }
 
+    public List<Path> updateServer(String name)
+            throws ServerManagerException {
+
+        validateName(name);
+        initializeDirectories();
+
+        try {
+            copyDirectory(getServerDirectory(name), UPDATE_BACKUPS_DIR.resolve(name));
+        } catch (IOException e) {
+            throw new ServerManagerException(
+                    "Could not find server '"
+                            + name
+                            + "'"
+            );
+        }
+
+        try {
+            deleteDirectory(getServerDirectory(name));
+        } catch (IOException e) {
+            throw new ServerManagerException(
+                    "Could not delete directory '"
+                            + getServerDirectory(name).normalize()
+                            + "'"
+            );
+        }
+
+        Path worlds = UPDATE_BACKUPS_DIR.resolve(name).resolve("worlds");
+
+        try (DirectoryStream<Path> stream =
+                     Files.newDirectoryStream(worlds)) {
+
+            List<Path> folders = new ArrayList<>();
+
+            for (Path folder : stream) {
+                if (Files.isDirectory(folder)) {
+                    folders.add(folder);
+                }
+            }
+
+            return folders;
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new ServerManagerException(
+                    "Could not find world backups", e
+            );
+        }
+    }
+
     public Path getServerDirectory(String name)
             throws ServerManagerException {
         validateName(name);
@@ -244,11 +298,13 @@ public final class ServerManager {
                 );
 
                 long prevTotalJiffies = server.getCpuTime();
-                Thread.sleep(CpuSamplingIntervalTime);
+                //In ms
+                long cpuSamplingIntervalTime = 100;
+                Thread.sleep(cpuSamplingIntervalTime);
 
                 System.out.println(
                         "Cpu: " +
-                                calculateCpuUsage(prevTotalJiffies, server.getCpuTime(), CpuSamplingIntervalTime)/getThreadCount() + "\n"
+                                calculateCpuUsage(prevTotalJiffies, server.getCpuTime(), cpuSamplingIntervalTime)/getThreadCount() + "\n"
 
                 );
             }
@@ -276,32 +332,6 @@ public final class ServerManager {
                 elapsedMs / 1000.0;
 
         return (cpuSeconds / elapsedSeconds) * 100.0;
-    }
-
-    //Overengineered when could've just took 100
-    private double getClkTck() {
-        if (clkTck != null) {
-            return clkTck;
-        }
-        try {
-
-            ProcessBuilder pb = new ProcessBuilder("getconf", "CLK_TCK");
-            Process p = pb.start();
-            try (BufferedReader reader = new BufferedReader(new FileReader("/proc/self/status"))) {}
-
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-                String line = in.readLine();
-                if (line != null) {
-                    clkTck = Double.parseDouble(line.trim());
-                    return clkTck;
-                }
-            }
-            p.waitFor();
-        } catch (Exception e) {
-            // Fallback to standard 100 if getconf fails
-            clkTck = 100.0;
-        }
-        return clkTck;
     }
 
     public int getThreadCount()
@@ -452,9 +482,11 @@ public final class ServerManager {
         }
     }
 
-    private ServerInstance getInstance(
+    public ServerInstance getInstance(
             String name
     ) throws ServerManagerException {
+
+        String version;
 
         validateName(name);
 
@@ -468,6 +500,17 @@ public final class ServerManager {
         Path directory =
                 serverPath(name);
 
+        try {
+            version = getServerVersion(directory);
+        } catch (IOException e) {
+            throw new ServerManagerException(
+                    "Directory '" +
+                            directory +
+                            "behaviour_packs" +
+                            "/' not found"
+            );
+        }
+
         if (!Files.isDirectory(directory)) {
             throw new ServerManagerException(
                     "Server '" +
@@ -479,6 +522,7 @@ public final class ServerManager {
         ServerInstance instance =
                 new ServerInstance(
                         name,
+                        version,
                         directory,
                         lineReader
                 );
@@ -506,10 +550,19 @@ public final class ServerManager {
                         String name =
                                 path.getFileName().toString();
 
+                        String version =
+                                null;
+                        try {
+                            version = getServerVersion(path);
+                        } catch (IOException e) {
+                            System.err.println("Directory '" + path + "behaviour_packs" + "/' not found");
+                        }
+
                         instances.put(
                                 name,
                                 new ServerInstance(
                                         name,
+                                        version,
                                         path,
                                         lineReader
                                 )
@@ -524,6 +577,30 @@ public final class ServerManager {
         }
     }
 
+    public static String getServerVersion(Path serverPath)
+            throws IOException {
+
+        Path packsDir = serverPath.resolve("behavior_packs");
+
+        if (!Files.isDirectory(packsDir)) return null;
+
+        return Files.list(packsDir)
+                    .map(p -> p.getFileName().toString())
+                    .filter(n -> n.startsWith("vanilla_"))
+                    .map(n -> n.substring("vanilla_".length()))
+                    .filter(n -> n.chars().allMatch(c -> Character.isDigit(c) || c == '.'))
+                    .map(n -> {
+                        String[] parts = n.split("\\.");
+                        return new int[]{
+                                Integer.parseInt(parts[0]),
+                                parts.length > 1 ? Integer.parseInt(parts[1]) : 0
+                        };
+                    })
+                    .max(Comparator.comparingInt((int[] a) -> a[0]).thenComparingInt(a -> a[1]))
+                    .map(a -> a[0] + "." + a[1])
+                    .orElse(null);
+    }
+
     private void initializeDirectories()
             throws ServerManagerException {
 
@@ -531,6 +608,8 @@ public final class ServerManager {
             Files.createDirectories(ROOT);
             Files.createDirectories(SERVERS_DIR);
             Files.createDirectories(BACKUPS_DIR);
+            Files.createDirectories(TEMPORARY_DIR);
+            Files.createDirectories(TEMPORARY_DIR.resolve("update_backups"));
 
         } catch (IOException e) {
             throw new ServerManagerException(
@@ -593,6 +672,27 @@ public final class ServerManager {
                 }
             }
         }
+    }
+
+    protected String getVariable(Path serverPath, String varName) throws IOException {
+        for (String line : Files.readAllLines(serverPath.resolve("server.properties"))) {
+            line = line.trim();
+
+            if (line.isEmpty() || line.startsWith("#"))
+                continue;
+
+            int separator = line.indexOf('=');
+
+            if (separator == -1)
+                continue;
+
+            String key = line.substring(0, separator).trim();
+
+            if (key.equals(varName))
+                return line.substring(separator + 1).trim();
+        }
+
+        return null;
     }
 
     private void deleteDirectory(

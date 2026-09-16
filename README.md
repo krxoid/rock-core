@@ -89,6 +89,7 @@ server delete <name>
 server import world <name> <path>
 server import world <server> <path>
 server config <name> <variable> <value>
+server update <name> <version>
 ```
 
 External operations such as acquiring and extracting a BDS distribution are handled at this layer rather than by the lower-level server state manager.
@@ -133,7 +134,7 @@ Server creation accepts an explicit Bedrock Dedicated Server version:
 
 ```text
 server create survival 1.26.43.1
-server create smp latest
+server update smp latest
 ```
 
 The corresponding BDS archive is retrieved from the official Minecraft distribution endpoint and extracted into the newly created server directory.
@@ -178,11 +179,8 @@ Rock Core is distributed through native Linux package formats.
 Current targets:
 
 * Arch Linux / CachyOS
-* Debian / Ubuntu
-* Fedora / RHEL
 
-Packaging definitions are maintained separately from the main source repository.
-
+Dropped support for Debian and Fedora because of maintainance getting too hard.
 ## Project Structure
 
 ```text
@@ -199,7 +197,7 @@ rock-core/
 └── LICENSE
 ```
 
-The repository contains the application source and build configuration. Distribution-specific packaging is maintained independently.
+The repository contains the application source and build configuration and also packaging as PKGBUILD.
 
 
 ## Requirements

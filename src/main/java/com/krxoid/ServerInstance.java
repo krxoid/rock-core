@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 public final class ServerInstance {
 
     private final String name;
+    private String version;
     private final Path directory;
     private final Path executable;
     private final LineReader lineReader;
@@ -31,10 +32,12 @@ public final class ServerInstance {
 
     public ServerInstance(
             String name,
+            String version,
             Path directory,
             LineReader lineReader
     ) {
         this.name = name;
+        this.version = version;
         this.directory = directory;
         this.executable =
                 directory.resolve("bedrock_server");
@@ -43,6 +46,10 @@ public final class ServerInstance {
 
     public String getName() {
         return name;
+    }
+
+    public String getVersion() {
+        return version;
     }
 
     public Path getDirectory() {

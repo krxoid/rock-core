@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.jline.reader.LineReader;
@@ -147,7 +148,20 @@ public final class ServerCommandHandler {
                 );
                 return delete(commandArgs[0]);
 
+            case "update":
+                requireArguments(
+                        command,
+                        commandArgs,
+                        2
+                );
+                return update(commandArgs);
+
             case "import":
+                requireArguments(
+                        command,
+                        commandArgs,
+                        3
+                );
                 return importcmd(commandArgs);
 
             case "config":
@@ -155,7 +169,6 @@ public final class ServerCommandHandler {
 
             case "help":
                 printServerHelp();
-
                 return 0;
 
             default:
@@ -244,7 +257,7 @@ public final class ServerCommandHandler {
     /*
      * server create <name> <version>
      */
-    private int create(String[] args) {
+     int create(String[] args) {
 
         if (args.length != 2) {
 
@@ -349,15 +362,6 @@ public final class ServerCommandHandler {
     private int importcmd(
             String[] args
     ) {
-
-        if (args.length < 3) {
-
-            System.err.println(
-                    "Usage: server import <type> <server> <path>"
-            );
-
-            return 1;
-        }
 
         String type =
                 args[0].toLowerCase();
@@ -762,6 +766,102 @@ public final class ServerCommandHandler {
         }
     }
 
+    public int update(String[] args) {
+
+        String name = args[0];
+        String version = args[1];
+
+        try {
+            String currentVersion = serverManager.getInstance(name).getVersion();
+            String latestVersion = new CommandDispatcher().getLatestVersion();
+
+            if (latestVersion.equals(currentVersion)) {
+                return 1;
+            }
+        } catch (IOException | ServerManagerException e) {
+            System.out.println(e.getMessage());
+        }
+
+        List<Path> worlds;
+
+        try {
+            worlds = serverManager.updateServer(name);
+
+            for (Path world : worlds) {
+                System.out.println("Transferred world '" + world + "'");
+            }
+        }
+        catch (ServerManagerException e) {
+            System.err.println("Could not update server '" + name + "': " + e.getMessage());
+            return 1;
+        }
+
+        create(args);
+        try {
+            Path WORLDS_DIR = serverManager.getServerDirectory(name);
+            copyDirectory(
+                    serverManager.getUpdateBackupsDir().resolve(name).resolve("worlds"),
+                    serverManager.getServerDirectory(name).resolve("worlds")
+            );
+
+        } catch (ServerManagerException | IOException e){
+            System.err.println("Could not copy worlds '" + name + "': " + e.getMessage());
+            return 1;
+        }
+
+        // Transferring basic server.properties attributes to the new server
+        String[] preservedSettings = {
+                // Server identity
+                "server-name",
+
+                // Gameplay
+                "gamemode",
+                "difficulty",
+                "allow-cheats",
+
+                // Player settings
+                "max-players",
+                "online-mode",
+                "allow-list",
+
+                // World
+                "level-name",
+                "level-seed",
+
+                // Network
+                "server-port",
+                "server-portv6",
+
+                // Misc
+                "view-distance",
+                "tick-distance",
+                "player-idle-timeout"
+        };
+
+        try {
+            for (String key : preservedSettings) {
+                config(
+                        new String[] {
+                                key,
+                                serverManager.getVariable(
+                                        serverManager.getBackupsDir(),
+                                        key
+                                ),
+                                name
+                        }
+                );
+            }
+        }
+
+        catch (IOException e) {
+            System.out.println("server.properties not found in '" + serverManager.getUpdateBackupsDir() + name);
+        }
+
+        System.out.println("Server '" + name + "' updated successfully");
+
+        return 0;
+    }
+
     public int config(String[] args) {
 
         try {
@@ -803,7 +903,8 @@ public final class ServerCommandHandler {
 
         return switch (command) {
 
-            case "create" ->
+            case "create",
+                 "update"->
                     " <name> <version>";
 
             case "start",
@@ -866,8 +967,14 @@ public final class ServerCommandHandler {
                   server delete <name>
                       Delete a stopped server.
                 
-                  server import world <server> <path>
-                      Import a Minecraft world.
+                  server import <option> <server> <path>
+                      Import something from somewhere.
+                
+                      server import world <server> <path>
+                          Import a Minecraft world.
+                
+                  server update <name> <version>
+                      Update an existing outdated server
                 
                 """);
     }

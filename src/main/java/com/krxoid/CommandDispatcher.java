@@ -277,7 +277,7 @@ public final class CommandDispatcher implements AutoCloseable {
                 """);
     }
 
-    protected void fetchVersions()
+    void fetchVersions()
             throws IOException, InterruptedException {
 
         Files.createDirectories(
@@ -427,10 +427,6 @@ public final class CommandDispatcher implements AutoCloseable {
                 .split(
                         "\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)"
                 );
-    }
-
-    public LineReader getLineReader() {
-        return lineReader;
     }
 
     @Override
