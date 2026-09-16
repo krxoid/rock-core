@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 public final class ServerInstance {
 
     private final String name;
-    private String version;
+    private final String version;
     private final Path directory;
     private final Path executable;
     private final LineReader lineReader;

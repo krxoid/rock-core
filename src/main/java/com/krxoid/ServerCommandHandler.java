@@ -620,7 +620,6 @@ public final class ServerCommandHandler {
         } catch (ServerManagerException e) {
 
             printError(e);
-            
 
             return 1;
         }

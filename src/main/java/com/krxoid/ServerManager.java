@@ -73,76 +73,42 @@ public final class ServerManager {
                 .noneMatch(ServerInstance::isRunning);
     }
 
-    public void listServers()
-            throws ServerManagerException {
+    public void listServers() throws ServerManagerException {
 
         initializeDirectories();
 
-        try {
-            List<Path> directories =
-                    Files.list(SERVERS_DIR)
-                            .filter(Files::isDirectory)
-                            .sorted(
-                                    Comparator.comparing(
-                                            path ->
-                                                    path.getFileName()
-                                                            .toString()
-                                    )
-                            )
-                            .toList();
+        try (var stream = Files.list(SERVERS_DIR)) {
+
+            List<Path> directories = stream
+                    .filter(Files::isDirectory)
+                    .sorted(Comparator.comparing(p -> p.getFileName().toString()))
+                    .toList();
 
             if (directories.isEmpty()) {
-                System.out.println(
-                        "No servers configured."
-                );
+                System.out.println("No servers configured.");
                 return;
             }
 
-            System.out.printf(
-                    "%-24s %-10s %-10s%n",
-                    "NAME",
-                    "STATUS",
-                    "PID"
-            );
+            System.out.printf("%-20s %-10s %-8s %-12s%n",
+                    "NAME", "STATUS", "PID", "VERSION");
+            System.out.println("-".repeat(52));
 
-            System.out.println(
-                    "-".repeat(48)
-            );
+            for (Path dir : directories) {
+                String name = dir.getFileName().toString();
+                ServerInstance server = getInstance(name);
+                boolean running = server.isRunning();
 
-            for (Path directory : directories) {
-
-                String name =
-                        directory.getFileName()
-                                .toString();
-
-                ServerInstance server =
-                        getInstance(name);
-
-                String status =
-                        server.isRunning()
-                                ? "running"
-                                : "stopped";
-
-                String pid =
-                        server.isRunning()
-                                ? Long.toString(
-                                server.getPid()
-                        )
-                                : "-";
-
-                System.out.printf(
-                        "%-24s %-10s %-10s%n",
+                System.out.printf("%-20s %-10s %-8s %-12s%n",
                         name,
-                        status,
-                        pid
+                        running ? "running" : "stopped",
+                        running ? Long.toString(server.getPid()) : "-",
+                        running || server.getVersion() != null
+                                ? server.getVersion() : "-"
                 );
             }
 
         } catch (IOException e) {
-            throw new ServerManagerException(
-                    "Failed to list servers.",
-                    e
-            );
+            throw new ServerManagerException("Failed to list servers.", e);
         }
     }
 
@@ -582,23 +548,37 @@ public final class ServerManager {
 
         Path packsDir = serverPath.resolve("behavior_packs");
 
-        if (!Files.isDirectory(packsDir)) return null;
+        if (!Files.isDirectory(packsDir)) {
+            return null;
+        }
 
-        return Files.list(packsDir)
+        try (var stream = Files.list(packsDir)) {
+            return stream
                     .map(p -> p.getFileName().toString())
                     .filter(n -> n.startsWith("vanilla_"))
                     .map(n -> n.substring("vanilla_".length()))
-                    .filter(n -> n.chars().allMatch(c -> Character.isDigit(c) || c == '.'))
-                    .map(n -> {
-                        String[] parts = n.split("\\.");
-                        return new int[]{
-                                Integer.parseInt(parts[0]),
-                                parts.length > 1 ? Integer.parseInt(parts[1]) : 0
-                        };
-                    })
-                    .max(Comparator.comparingInt((int[] a) -> a[0]).thenComparingInt(a -> a[1]))
-                    .map(a -> a[0] + "." + a[1])
+                    .filter(n -> n.matches("\\d+(\\.\\d+)+"))
+                    .max(Comparator.comparing(
+                            n -> Arrays.stream(n.split("\\."))
+                                    .mapToInt(Integer::parseInt)
+                                    .boxed()
+                                    .toList(),
+                            (a, b) -> {
+                                int size = Math.max(a.size(), b.size());
+
+                                for (int i = 0; i < size; i++) {
+                                    int av = i < a.size() ? a.get(i) : 0;
+                                    int bv = i < b.size() ? b.get(i) : 0;
+
+                                    if (av != bv) {
+                                        return Integer.compare(av, bv);
+                                    }
+                                }
+
+                                return 0;
+                            }))
                     .orElse(null);
+        }
     }
 
     private void initializeDirectories()
