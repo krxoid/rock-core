@@ -1,7 +1,7 @@
 # Maintainer: Krxoid
 
 pkgname=rock-core
-pkgver=1.3.0
+pkgver=1.4.0
 pkgrel=1
 pkgdesc='Command-line manager for Minecraft Bedrock Dedicated Server instances'
 arch=('any')
@@ -11,12 +11,12 @@ depends=('java-runtime')
 
 source=(
     "rock-core-${pkgver}.jar::https://github.com/krxoid/rock-core/releases/download/${pkgver}/rock-core-${pkgver}.jar"
-    'rock'
+    "https://raw.githubusercontent.com/krxoid/rock-core/master/rock"
 )
 
 sha256sums=(
-    'faad85f11e01238c7f01129fe78856d82aec307cd9b0e0f1db7ec9be084c2eee'
-    'f282147acd9bf86e091b4b8a5d9b64ddd1c22a9890f0ddb27fc35509b2cd2159'
+    '3151f48b0fd3a6b71163d01498cc73c34bcdeda482ebafb58b43b1eef69c9346'
+    '403f3e55257ace9de0d106b4917ceb3fba46bb2229219d90e0ae54ccceeb07a9'
 )
 
 package() {

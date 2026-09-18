@@ -15,6 +15,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.jline.reader.LineReader;
 
+import static com.krxoid.CommandDispatcher.getLatestVersion;
+
 public final class ServerCommandHandler {
 
     private static final String BDS_URL =
@@ -275,8 +277,7 @@ public final class ServerCommandHandler {
                 args[1];
 
         try {
-            if (version.equals("latest")) version = new CommandDispatcher()
-                    .getLatestVersion()
+            if (version.equals("latest")) version = getLatestVersion()
                     .replace("[", "")
                     .replace("]", "");
         }
@@ -768,17 +769,23 @@ public final class ServerCommandHandler {
     public int update(String[] args) {
 
         String name = args[0];
-        String version = args[1];
 
         try {
             String currentVersion = serverManager.getInstance(name).getVersion();
-            String latestVersion = new CommandDispatcher().getLatestVersion();
+            String latestVersion = getLatestVersion()
+                    .replace("[", "")
+                    .replace("]", "");
+
+            latestVersion = latestVersion.substring(0, latestVersion.lastIndexOf('.'));
 
             if (latestVersion.equals(currentVersion)) {
-                return 1;
+                throw new ServerManagerException(
+                        "Server '" + name + "' is already on the latest version '" + latestVersion + "'"
+                );
             }
         } catch (IOException | ServerManagerException e) {
-            System.out.println(e.getMessage());
+            System.err.println(e.getMessage());
+            return 1;
         }
 
         List<Path> worlds;
@@ -853,7 +860,7 @@ public final class ServerCommandHandler {
         }
 
         catch (IOException e) {
-            System.out.println("server.properties not found in '" + serverManager.getUpdateBackupsDir() + name);
+            System.out.println("server.properties not found in " + serverManager.getUpdateBackupsDir() + "/" + name);
         }
 
         System.out.println("Server '" + name + "' updated successfully");
