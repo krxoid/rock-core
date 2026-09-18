@@ -24,7 +24,7 @@ import static com.krxoid.ServerManager.ROOT;
 
 public final class CommandDispatcher implements AutoCloseable {
 
-    public static final String VERSION = "1.3.0";
+    public static final String VERSION = "1.4.0";
 
     public static final Path VERSIONS_FILE =
             ROOT.resolve("versions.json");
@@ -347,7 +347,7 @@ public final class CommandDispatcher implements AutoCloseable {
         );
     }
 
-    private String[] getVersions(int range)
+    private static String[] getVersions(int range)
             throws IOException {
 
         if (range <= 0) {
@@ -403,7 +403,7 @@ public final class CommandDispatcher implements AutoCloseable {
         return reversed;
     }
 
-    public String getLatestVersion()
+    public static String getLatestVersion()
             throws IOException {
 
         return Arrays.toString(

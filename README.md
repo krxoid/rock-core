@@ -172,15 +172,30 @@ The generated artifact is placed under:
 build/libs/
 ```
 
-## Packaging
+## Installation
 
-Rock Core is distributed through native Linux package formats.
+Rock Core is distributed through its PKGBUILD and install.sh script
 
 Current targets:
 
-* Arch Linux / CachyOS
+* Arch based distros with:  tar.zst / PKGBUILD
 
-Dropped support for Debian and Fedora because of maintainance getting too hard.
+
+* Most glibc based desktops with: install.sh
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/krxoid/rock-core/master/install.sh | sudo bash
+```
+
+Dropped native support for Debian and Fedora because of maintenance getting too hard.
+
+## Updating
+
+You can update rock-core by using its inbuilt functionality
+
+```bash
+rock update latest
+```
 ## Project Structure
 
 ```text

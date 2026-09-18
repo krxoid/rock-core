@@ -1,0 +1,164 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO="krxoid/rock-core"
+INSTALL_DIR="/usr/share/rock-core"
+JAR="$INSTALL_DIR/rock-core.jar"
+
+GITHUB_API="https://api.github.com/repos/$REPO"
+RELEASE_BASE="https://github.com/$REPO/releases/download"
+
+die() {
+    echo "rock: error: $*" >&2
+    exit 1
+}
+
+info() {
+    echo "rock: $*"
+}
+
+require_command() {
+    command -v "$1" >/dev/null 2>&1 ||
+        die "required command '$1' is not installed"
+}
+
+# ------------------------------------------------------------
+# Update
+# ------------------------------------------------------------
+
+update() {
+    local requested_version="${1:-}"
+
+    [ -n "$requested_version" ] ||
+        die "usage: rock update <version|latest>"
+
+    require_command curl
+    require_command mktemp
+    require_command install
+    require_command unzip
+
+    local version
+
+    if [ "$requested_version" = "latest" ]; then
+        info "checking latest release..."
+
+        version="$(
+            curl -fsSL \
+                -H "Accept: application/vnd.github+json" \
+                "$GITHUB_API/releases/latest" |
+            grep -m1 '"tag_name"' |
+            sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'
+        )"
+
+        [ -n "$version" ] ||
+            die "could not determine latest release"
+
+        # Strip a leading v if GitHub tags use v1.3.0
+        version="${version#v}"
+    else
+        version="${requested_version#v}"
+    fi
+
+    # Only accept normal semantic-looking versions.
+    case "$version" in
+        ''|*[!0-9.]*)
+            die "invalid version: $requested_version"
+            ;;
+    esac
+
+    local url
+    url="$RELEASE_BASE/$version/rock-core-$version.jar"
+
+    info "updating Rock Core to $version"
+    info "downloading $url"
+
+    local tmp
+    tmp="$(mktemp "${TMPDIR:-/tmp}/rock-core.XXXXXX.jar")"
+
+    cleanup() {
+        rm -f "$tmp"
+    }
+
+    trap cleanup EXIT
+
+    if ! curl \
+        --fail \
+        --location \
+        --show-error \
+        --retry 3 \
+        --connect-timeout 10 \
+        --output "$tmp" \
+        "$url"; then
+        die "failed to download Rock Core $version"
+    fi
+
+    [ -s "$tmp" ] ||
+        die "downloaded file is empty"
+
+    # --------------------------------------------------------
+    # Validate that the downloaded file is actually a JAR.
+    # A JAR is a ZIP archive.
+    # --------------------------------------------------------
+
+    if ! unzip -t "$tmp" >/dev/null 2>&1; then
+        die "downloaded file is not a valid JAR"
+    fi
+
+    # --------------------------------------------------------
+    # Install atomically-ish:
+    #
+    # install writes the completed temporary file into the
+    # destination rather than exposing a partially downloaded
+    # JAR.
+    # --------------------------------------------------------
+
+    if [ ! -w "$INSTALL_DIR" ]; then
+        info "root privileges are required to replace $JAR"
+        sudo install -m 644 "$tmp" "$JAR"
+    else
+        install -m 644 "$tmp" "$JAR"
+    fi
+
+    trap - EXIT
+    rm -f "$tmp"
+
+    echo
+    info "Rock Core successfully updated to $version."
+    info "Run 'rock' normally to start the new version."
+}
+
+# ------------------------------------------------------------
+# Main
+# ------------------------------------------------------------
+
+case "${1:-}" in
+    update)
+        shift
+        update "${1:-}"
+        exit 0
+        ;;
+
+    --help|-h)
+        cat <<'EOF'
+Rock Core
+
+Usage:
+    rock [arguments...]
+    rock update <version>
+    rock update latest
+
+Examples:
+    rock
+    rock status
+    rock start myserver
+    rock update 1.3.0
+    rock update latest
+EOF
+        exit 0
+        ;;
+
+    *)
+        exec java -jar "$JAR" "$@"
+        ;;
+esac

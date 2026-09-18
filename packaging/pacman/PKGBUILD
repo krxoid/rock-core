@@ -1,7 +1,7 @@
 # Maintainer: Krxoid
 
 pkgname=rock-core
-pkgver=1.3.0
+pkgver=1.4.0
 pkgrel=1
 pkgdesc='Command-line manager for Minecraft Bedrock Dedicated Server instances'
 arch=('any')
@@ -11,7 +11,7 @@ depends=('java-runtime')
 
 source=(
     "rock-core-${pkgver}.jar::https://github.com/krxoid/rock-core/releases/download/${pkgver}/rock-core-${pkgver}.jar"
-    'rock'
+    '../../rock'
 )
 
 sha256sums=(

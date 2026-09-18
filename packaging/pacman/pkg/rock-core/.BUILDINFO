@@ -1,7 +1,7 @@
 format = 2
 pkgname = rock-core
 pkgbase = rock-core
-pkgver = 1.3.0-1
+pkgver = 1.4.0-1
 pkgarch = any
 pkgbuild_sha256sum = e2a5ec7c4c00b7ae0680b7b0062f0d3cc718d53868724f0cd93293a691bda4a6
 packager = Unknown Packager
