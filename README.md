@@ -75,7 +75,7 @@ Contains the command-level implementation for server operations.
 Examples include:
 
 ```text
-server list
+server list <servers|backups>
 server create <name> <version>
 server start <name>
 server stop <name>
@@ -122,7 +122,7 @@ rock >
 or invoked directly:
 
 ```bash
-rock server list
+rock server list servers
 rock server status <name>
 ```
 

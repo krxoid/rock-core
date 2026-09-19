@@ -5,7 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1a4b0550-da09-4856-bb6a-b33baddedb91" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/packaging/pacman/PKGBUILD" beforeDir="false" afterPath="$PROJECT_DIR$/packaging/pacman/PKGBUILD" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/CommandDispatcher.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/CommandDispatcher.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/Main.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerCommandHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerCommandHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerManager.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

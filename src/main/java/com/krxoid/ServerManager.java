@@ -8,6 +8,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
 import java.nio.file.*;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -72,12 +73,15 @@ public final class ServerManager {
                 .stream()
                 .noneMatch(ServerInstance::isRunning);
     }
-
-    public void listServers() throws ServerManagerException {
+    public void listServers(String modifier) throws ServerManagerException, IOException {
 
         initializeDirectories();
 
-        try (var stream = Files.list(SERVERS_DIR)) {
+        Path targetDir;
+        boolean isBackups = "backups".equals(modifier);
+        targetDir = isBackups ? BACKUPS_DIR : SERVERS_DIR;
+
+        try (var stream = Files.list(targetDir)) {
 
             List<Path> directories = stream
                     .filter(Files::isDirectory)
@@ -85,32 +89,175 @@ public final class ServerManager {
                     .toList();
 
             if (directories.isEmpty()) {
-                System.out.println("No servers configured.");
+                System.out.println(
+                        isBackups
+                                ? "No backups found."
+                                : "No servers configured."
+                );
                 return;
             }
 
-            System.out.printf("%-20s %-10s %-8s %-12s%n",
-                    "NAME", "STATUS", "PID", "VERSION");
-            System.out.println("-".repeat(52));
+            if (isBackups) {
 
-            for (Path dir : directories) {
-                String name = dir.getFileName().toString();
-                ServerInstance server = getInstance(name);
-                boolean running = server.isRunning();
+                System.out.print("BACKUPS");
+                System.out.println();
 
-                System.out.printf("%-20s %-10s %-8s %-12s%n",
-                        name,
-                        running ? "running" : "stopped",
-                        running ? Long.toString(server.getPid()) : "-",
-                        running || server.getVersion() != null
-                                ? server.getVersion() : "-"
+                for (int i = 0; i < directories.size(); i++) {
+                    Path serverDir = directories.get(i);
+                    String serverName = serverDir.getFileName().toString();
+
+                    boolean lastServer = i == directories.size() - 1;
+                    String branch = lastServer ? "└──" : "├──";
+                    String pipe = lastServer ? "   " : "│  ";
+
+                    System.out.println(branch + " " + serverName);
+
+                    try (var backupStream = Files.list(serverDir)) {
+
+                        List<Path> backups = backupStream
+                                .filter(Files::isDirectory)
+                                .sorted(
+                                        Comparator.comparing(
+                                                p -> p.getFileName().toString(),
+                                                Comparator.reverseOrder()
+                                        )
+                                )
+                                .toList();
+
+                        if (backups.isEmpty()) {
+                            System.out.println(pipe + "└── No backups");
+                            continue;
+                        }
+
+                        for (int j = 0; j < backups.size(); j++) {
+                            Path backup = backups.get(j);
+
+                            String timestamp = backup.getFileName().toString();
+                            String formatted = formatTimestamp(timestamp);
+                            String size = formatSize(getDirectorySize(backup));
+
+                            boolean lastBackup = j == backups.size() - 1;
+                            String backupBranch = lastBackup ? "└──" : "├──";
+
+                            System.out.printf(
+                                    "%s%s %s  %s%n",
+                                    pipe,
+                                    backupBranch,
+                                    formatted,
+                                    size
+                            );
+                        }
+
+                        long totalSize = 0;
+
+                        for (Path backup : backups) {
+                            totalSize += getDirectorySize(backup);
+                        }
+
+                        System.out.printf(
+                                "%s    Total: %s%n",
+                                pipe,
+                                formatSize(totalSize)
+                        );
+                    }
+                }
+
+            } else if ("servers".equals(modifier)){
+
+                System.out.print("SERVERS");
+                System.out.println();
+
+                System.out.printf(
+                        "%-20s %-12s %-10s %-14s %-10s%n",
+                        "NAME",
+                        "STATUS",
+                        "PID",
+                        "VERSION",
+                        "SIZE"
                 );
+
+                System.out.println("─".repeat(70));
+
+                for (Path dir : directories) {
+
+                    String name = dir.getFileName().toString();
+                    ServerInstance server = getInstance(name);
+
+                    boolean running = server.isRunning();
+                    String version = server.getVersion();
+
+                    long size = getDirectorySize(dir);
+
+                    System.out.printf(
+                            "%-20s %-12s %-10s %-14s %-10s%n",
+                            name,
+                            running ? "running" : "stopped",
+                            running ? Long.toString(server.getPid()) : "-",
+                            version != null ? version : "-",
+                            formatSize(size)
+                    );
+                }
+
+                System.out.println("─".repeat(70));
+                System.out.printf(
+                        "%-20s %s%n",
+                        "TOTAL",
+                        formatSize(
+                                getTotalDirectorySize(directories)
+                        )
+                );
+            }
+            else {
+                throw new ServerManagerException("Usage: server list <server|backups>");
             }
 
         } catch (IOException e) {
-            throw new ServerManagerException("Failed to list servers.", e);
+            throw new ServerManagerException(
+                    "Failed to list " + (isBackups ? "backups" : "servers") + ".",
+                    e
+            );
         }
     }
+
+    private long getDirectorySize(Path dir) throws IOException {
+        try (var stream = Files.walk(dir)) {
+            return stream.filter(Files::isRegularFile)
+                    .mapToLong(p -> {
+                        try { return Files.size(p); }
+                        catch (IOException e) { return 0L; }
+                    })
+                    .sum();
+        }
+    }
+
+    private String formatSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
+        if (bytes < 1024 * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024));
+        return String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024));
+    }
+
+    private String formatTimestamp(String ts) {
+        // ts format: 20260916-141844
+        try {
+            java.time.LocalDateTime dt = java.time.LocalDateTime
+                    .parse(ts, java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+            return dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        } catch (Exception e) {
+            return ts;
+        }
+    }
+
+    private long getTotalDirectorySize(List<Path> directories) throws IOException {
+        long total = 0;
+
+        for (Path directory : directories) {
+            total += getDirectorySize(directory);
+        }
+
+        return total;
+    }
+
 
     /**
      * Creates the filesystem layout for a new Bedrock server.
@@ -365,50 +512,41 @@ public final class ServerManager {
 
         getInstance(name).sendCommand(command);
     }
-
     public void createBackup(String name)
             throws ServerManagerException {
 
-        ServerInstance server =
-                getInstance(name);
+        ServerInstance server = getInstance(name);
 
-        Path worlds =
-                server.getDirectory()
-                        .resolve("worlds");
+        Path worlds = server.getDirectory()
+                .resolve("worlds");
 
-        if (!Files.exists(worlds)) {
+        if (!Files.isDirectory(worlds)) {
             throw new ServerManagerException(
                     "World directory does not exist."
             );
         }
 
-        Path backupDirectory =
-                BACKUPS_DIR.resolve(name);
+        Path backupDirectory = BACKUPS_DIR.resolve(name);
 
-        String timestamp =
-                LocalDateTime.now()
-                        .format(BACKUP_FORMAT);
+        String timestamp = LocalDateTime.now()
+                .format(BACKUP_FORMAT);
 
-        Path destination =
-                backupDirectory.resolve(timestamp);
+        Path destination = backupDirectory.resolve(timestamp);
 
         try {
-            Files.createDirectories(
-                    destination
-            );
+            Files.createDirectories(backupDirectory);
+            Files.createDirectories(destination);
 
-            copyDirectory(
-                    worlds,
-                    destination
-            );
+            copyDirectory(worlds, destination);
 
-            System.out.println(
-                    "Backup created:"
-            );
+            long size = getDirectorySize(destination);
 
-            System.out.println(
-                    destination
-            );
+            System.out.println("Backup created successfully.");
+            System.out.println();
+            System.out.println("  Server: " + name);
+            System.out.println("  Backup: " + timestamp);
+            System.out.println("  Size:   " + formatSize(size));
+            System.out.println("  Path:   " + destination);
 
         } catch (IOException e) {
             throw new ServerManagerException(

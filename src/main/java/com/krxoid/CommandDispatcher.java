@@ -252,7 +252,7 @@ public final class CommandDispatcher implements AutoCloseable {
                 Rock Core - Minecraft Bedrock Server Manager
                 
                 Commands:
-                  server list
+                  server list <servers|backups>
                   server create <name> <version>
                   server start <name>
                   server stop <name>

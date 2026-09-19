@@ -63,7 +63,7 @@ public final class Main {
                   -v, --version            Show version
                 
                 Commands:
-                  server list
+                  server list <servers|backups>
                   server create <name> <version>
                   server start <name>
                   server stop <name>

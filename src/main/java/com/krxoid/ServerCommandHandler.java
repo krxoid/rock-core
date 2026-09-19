@@ -57,9 +57,9 @@ public final class ServerCommandHandler {
                 requireArguments(
                         command,
                         commandArgs,
-                        0
+                        1
                 );
-                return list();
+                return list(commandArgs[0]);
 
             case "create":
                 return create(commandArgs);
@@ -165,6 +165,13 @@ public final class ServerCommandHandler {
                         3
                 );
                 return importcmd(commandArgs);
+
+            case "restore":
+                requireArguments(
+                        command,
+                        commandArgs,
+                        2
+                );
 
             case "config":
                 return config(commandArgs);
@@ -611,16 +618,22 @@ public final class ServerCommandHandler {
         }
     }
 
-    public int list() {
+    public int list(String modifier) {
 
         try {
-            serverManager.listServers();
+            serverManager.listServers(modifier);
             
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
+
+            return 1;
+
+        } catch (IOException e) {
+
+            System.err.println(e.getMessage());
 
             return 1;
         }
@@ -893,7 +906,7 @@ public final class ServerCommandHandler {
             int required
     ) throws ServerManagerException {
 
-        if (args.length < required) {
+        if (args.length != required) {
 
             throw new ServerManagerException(
                     "Usage: server " +
@@ -929,6 +942,9 @@ public final class ServerCommandHandler {
             case "import" ->
                     " <type> <server> <path>";
 
+            case "list" ->
+                " <servers|backups>";
+
             default ->
                     "";
         };
@@ -940,7 +956,7 @@ public final class ServerCommandHandler {
                 
                 Server commands:
                 
-                  server list
+                  server list <servers|backups>
                       List all configured servers.
                 
                   server create <name> <version>
