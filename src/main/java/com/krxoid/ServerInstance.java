@@ -56,9 +56,6 @@ public final class ServerInstance {
         return directory;
     }
 
-    public boolean exists() {
-        return Files.isDirectory(directory);
-    }
 
     public boolean isRunning() {
         synchronized (lifecycleLock) {

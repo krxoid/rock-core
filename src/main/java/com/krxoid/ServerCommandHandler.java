@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.jline.reader.LineReader;
@@ -170,8 +171,9 @@ public final class ServerCommandHandler {
                 requireArguments(
                         command,
                         commandArgs,
-                        2
+                        1
                 );
+                return restore(commandArgs[0]);
 
             case "config":
                 return config(commandArgs);
@@ -763,6 +765,98 @@ public final class ServerCommandHandler {
         }
     }
 
+    private int restore(String servername) {
+        List<String> backups;
+
+        try {
+            backups = serverManager.getBackups(servername);
+        } catch (IOException e) {
+            System.out.println("Failed to get backups: " + e.getMessage());
+            return 1;
+        }
+
+        if (backups.isEmpty()) {
+            System.out.println("No backups found for " + servername);
+            return 1;
+        }
+
+        LineReader lineReader = serverManager.getLineReader();
+
+        int selected = 0;
+
+        lineReader.getTerminal().enterRawMode();
+
+        try {
+            lineReader.getTerminal().writer().print(
+                    "\033[?1049h\033[?25l"
+            );
+            lineReader.getTerminal().writer().flush();
+
+            while (true) {
+                var out = lineReader.getTerminal().writer();
+
+                out.print("\033[H\033[2J");
+
+                out.println("Restore backup for \"" + servername + "\"");
+                out.println();
+
+                for (int i = 0; i < backups.size(); i++) {
+                    out.printf(
+                            "%s%s%n",
+                            i == selected ? "> " : "  ",
+                            backups.get(i)
+                    );
+                }
+
+                out.println();
+                out.print("↑/↓ Select    Enter Restore    Esc Cancel");
+                out.flush();
+
+                int key = lineReader.getTerminal()
+                        .reader()
+                        .read();
+
+                if (key == 27) {
+                    int next = lineReader.getTerminal().reader().read();
+
+                    if (next == '[') {
+                        int arrow = lineReader.getTerminal().reader().read();
+
+                        if (arrow == 'A') {
+                            selected = Math.max(0, selected - 1);
+                        } else if (arrow == 'B') {
+                            selected = Math.min(
+                                    backups.size() - 1,
+                                    selected + 1
+                            );
+                        }
+                    } else {
+                        return 1;
+                    }
+
+                } else if (key == '\n' || key == '\r') {
+                    try {
+                        serverManager.restoreBackup(
+                                servername,
+                                backups.get(selected)
+                        );
+                        
+                        return 0;
+                    } catch (ServerManagerException e) {
+                        return 1;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            return 1;
+        } finally {
+            lineReader.getTerminal().writer().print(
+                    "\033[?25h\033[?1049l"
+            );
+            lineReader.getTerminal().writer().flush();
+        }
+    }
+
     public int delete(String name) {
 
         try {
@@ -933,7 +1027,8 @@ public final class ServerCommandHandler {
                  "players",
                  "console",
                  "backup",
-                 "delete" ->
+                 "delete",
+                 "restore" ->
                     " <name>";
 
             case "exec" ->
@@ -984,7 +1079,7 @@ public final class ServerCommandHandler {
                       Execute a command on a server.
                 
                   server backup <name>
-                      Create a backup.
+                      Create a world backup.
                 
                   server delete <name>
                       Delete a stopped server.

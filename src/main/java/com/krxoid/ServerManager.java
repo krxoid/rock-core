@@ -12,6 +12,8 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Stream;
+
 import org.jline.reader.LineReader;
 
 public final class ServerManager {
@@ -44,7 +46,7 @@ public final class ServerManager {
     private final Map<String, ServerInstance> instances =
             new HashMap<>();
 
-    private final LineReader lineReader;
+    final LineReader lineReader;
 
     public ServerManager(LineReader lineReader) {
         this.lineReader = lineReader;
@@ -66,6 +68,10 @@ public final class ServerManager {
 
     public Path getBackupsDir() {
         return BACKUPS_DIR;
+    }
+
+    public LineReader getLineReader() {
+        return lineReader;
     }
 
     public boolean isIdle() {
@@ -99,8 +105,7 @@ public final class ServerManager {
 
             if (isBackups) {
 
-                System.out.print("BACKUPS");
-                System.out.println();
+                System.out.println("WORLD BACKUPS");
 
                 for (int i = 0; i < directories.size(); i++) {
                     Path serverDir = directories.get(i);
@@ -112,56 +117,83 @@ public final class ServerManager {
 
                     System.out.println(branch + " " + serverName);
 
-                    try (var backupStream = Files.list(serverDir)) {
+                    try (var worldStream = Files.list(serverDir)) {
 
-                        List<Path> backups = backupStream
+                        List<Path> worlds = worldStream
                                 .filter(Files::isDirectory)
-                                .sorted(
-                                        Comparator.comparing(
-                                                p -> p.getFileName().toString(),
-                                                Comparator.reverseOrder()
-                                        )
-                                )
+                                .sorted(Comparator.comparing(
+                                        p -> p.getFileName().toString()
+                                ))
                                 .toList();
 
-                        if (backups.isEmpty()) {
-                            System.out.println(pipe + "└── No backups");
+                        if (worlds.isEmpty()) {
+                            System.out.println(pipe + "└── No world backups");
                             continue;
                         }
 
-                        for (int j = 0; j < backups.size(); j++) {
-                            Path backup = backups.get(j);
+                        Path worldDir = worlds.get(0);
+                        String worldName = worldDir.getFileName().toString();
 
-                            String timestamp = backup.getFileName().toString();
-                            String formatted = formatTimestamp(timestamp);
-                            String size = formatSize(getDirectorySize(backup));
+                        System.out.println(pipe + "└── " + worldName);
 
-                            boolean lastBackup = j == backups.size() - 1;
-                            String backupBranch = lastBackup ? "└──" : "├──";
+                        try (var backupStream = Files.list(worldDir)) {
+
+                            List<Path> backups = backupStream
+                                    .filter(Files::isDirectory)
+                                    .sorted(
+                                            Comparator.comparing(
+                                                    p -> p.getFileName().toString(),
+                                                    Comparator.reverseOrder()
+                                            )
+                                    )
+                                    .toList();
+
+                            if (backups.isEmpty()) {
+                                System.out.println(pipe + "    └── No backups");
+                                continue;
+                            }
+
+                            for (int j = 0; j < backups.size(); j++) {
+                                Path backup = backups.get(j);
+
+                                String timestamp =
+                                        backup.getFileName().toString();
+
+                                String formatted =
+                                        formatTimestamp(timestamp);
+
+                                String size =
+                                        formatSize(getDirectorySize(backup));
+
+                                boolean lastBackup =
+                                        j == backups.size() - 1;
+
+                                String backupBranch =
+                                        lastBackup ? "└──" : "├──";
+
+                                System.out.printf(
+                                        "%s    %s %s  %s%n",
+                                        pipe,
+                                        backupBranch,
+                                        formatted,
+                                        size
+                                );
+                            }
+
+                            long totalSize = 0;
+
+                            for (Path backup : backups) {
+                                totalSize += getDirectorySize(backup);
+                            }
 
                             System.out.printf(
-                                    "%s%s %s  %s%n",
+                                    "%s       Total: %s%n",
                                     pipe,
-                                    backupBranch,
-                                    formatted,
-                                    size
+                                    formatSize(totalSize)
                             );
                         }
-
-                        long totalSize = 0;
-
-                        for (Path backup : backups) {
-                            totalSize += getDirectorySize(backup);
-                        }
-
-                        System.out.printf(
-                                "%s    Total: %s%n",
-                                pipe,
-                                formatSize(totalSize)
-                        );
                     }
                 }
-
             } else if ("servers".equals(modifier)){
 
                 System.out.print("SERVERS");
@@ -520,37 +552,173 @@ public final class ServerManager {
         Path worlds = server.getDirectory()
                 .resolve("worlds");
 
+        Path config = server.getDirectory()
+                .resolve("server.properties");
+
         if (!Files.isDirectory(worlds)) {
             throw new ServerManagerException(
                     "World directory does not exist."
             );
         }
 
-        Path backupDirectory = BACKUPS_DIR.resolve(name);
-
-        String timestamp = LocalDateTime.now()
-                .format(BACKUP_FORMAT);
-
-        Path destination = backupDirectory.resolve(timestamp);
-
         try {
-            Files.createDirectories(backupDirectory);
+            List<Path> worldDirectories;
+
+            try (var stream = Files.list(worlds)) {
+                worldDirectories = stream
+                        .filter(Files::isDirectory)
+                        .toList();
+            }
+
+            if (worldDirectories.isEmpty()) {
+                throw new ServerManagerException(
+                        "No world found."
+                );
+            }
+
+            if (worldDirectories.size() > 1) {
+                throw new ServerManagerException(
+                        "Multiple worlds found. Rock Core expects one world."
+                );
+            }
+
+            Path world = worldDirectories.get(0);
+            String worldName = world.getFileName().toString();
+
+            String timestamp = LocalDateTime.now()
+                    .format(BACKUP_FORMAT);
+
+            Path destination = BACKUPS_DIR
+                    .resolve(name)
+                    .resolve(worldName)
+                    .resolve(timestamp);
+
             Files.createDirectories(destination);
 
-            copyDirectory(worlds, destination);
+            copyDirectory(world, destination.resolve(worldName));
+            Files.copy(
+                    config,
+                    destination.resolve("server.properties"),
+                    StandardCopyOption.REPLACE_EXISTING
+            );
 
             long size = getDirectorySize(destination);
 
             System.out.println("Backup created successfully.");
             System.out.println();
             System.out.println("  Server: " + name);
+            System.out.println("  World:  " + worldName);
             System.out.println("  Backup: " + timestamp);
             System.out.println("  Size:   " + formatSize(size));
             System.out.println("  Path:   " + destination);
 
+        } catch (ServerManagerException e) {
+            throw e;
         } catch (IOException e) {
             throw new ServerManagerException(
                     "Failed to create backup.",
+                    e
+            );
+        }
+    }
+
+    public List<String> getBackups(String name) throws IOException {
+
+        Path worlds = SERVERS_DIR
+                .resolve(name)
+                .resolve("worlds");
+
+        try (Stream<Path> worldsStream = Files.list(worlds)) {
+
+            Path world = worldsStream
+                    .filter(Files::isDirectory)
+                    .findFirst()
+                    .orElseThrow(() ->
+                            new IOException("No world found.")
+                    );
+
+            Path backupWorld = BACKUPS_DIR
+                    .resolve(name)
+                    .resolve(world.getFileName().toString());
+
+            if (!Files.isDirectory(backupWorld)) {
+                return List.of();
+            }
+
+            try (Stream<Path> stream = Files.list(backupWorld)) {
+                return stream
+                        .filter(Files::isDirectory)
+                        .map(p -> p.getFileName().toString())
+                        .sorted(Comparator.reverseOrder())
+                        .toList();
+            }
+        }
+    }
+
+    public void restoreBackup(String name, String date)
+            throws ServerManagerException {
+
+        ServerInstance server = getInstance(name);
+
+        Path worlds = server.getDirectory()
+                .resolve("worlds");
+
+        try {
+            List<Path> worldDirectories;
+
+            try (var stream = Files.list(worlds)) {
+                worldDirectories = stream
+                        .filter(Files::isDirectory)
+                        .toList();
+            }
+
+            if (worldDirectories.isEmpty()) {
+                throw new ServerManagerException(
+                        "No world found."
+                );
+            }
+
+            if (worldDirectories.size() > 1) {
+                throw new ServerManagerException(
+                        "Multiple worlds found. Rock Core expects one world."
+                );
+            }
+
+            Path world = worldDirectories.get(0);
+            String worldName = world.getFileName().toString();
+
+            Path backup = BACKUPS_DIR
+                    .resolve(name)
+                    .resolve(worldName)
+                    .resolve(date);
+
+            if (!Files.isDirectory(backup)) {
+                throw new ServerManagerException(
+                        "Backup '" + date + "' does not exist."
+                );
+            }
+
+            // Protect the current world first.
+            createBackup(name);
+
+            deleteDirectory(world);
+
+            copyDirectory(
+                    backup.resolve(worldName),
+                    world
+            );
+
+            System.out.println("Backup restored successfully.");
+            System.out.println();
+            System.out.println("  Server:  " + name);
+            System.out.println("  Backup:  " + date);
+            System.out.println("  Restored: worlds/Bedrock level");
+
+        } catch (ServerManagerException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new ServerManagerException(
+                    "Failed to restore backup '" + date + "'.",
                     e
             );
         }
