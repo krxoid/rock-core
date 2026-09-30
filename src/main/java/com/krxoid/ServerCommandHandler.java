@@ -1,5 +1,7 @@
 package com.krxoid;
 
+import org.jline.reader.LineReader;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -9,12 +11,13 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import org.jline.reader.LineReader;
 
 import static com.krxoid.CommandDispatcher.getLatestVersion;
 
@@ -24,12 +27,26 @@ public final class ServerCommandHandler {
             "https://www.minecraft.net/bedrockdedicatedserver/bin-linux/"
                     + "bedrock-server-%s.zip";
 
+    private static final Pattern VERSION_PATTERN =
+            Pattern.compile("\\d+(?:\\.\\d+)+");
+
+    private static final Pattern ARGUMENT_PATTERN =
+            Pattern.compile(
+                    "'([^']*)'|\"([^\"]*)\"|(\\S+)"
+            );
+
     private final ServerManager serverManager;
 
     private final HttpClient httpClient =
-            HttpClient.newHttpClient();
+            HttpClient.newBuilder()
+                    .connectTimeout(
+                            Duration.ofSeconds(15)
+                    )
+                    .build();
 
-    public ServerCommandHandler(LineReader lineReader) {
+    public ServerCommandHandler(
+            LineReader lineReader
+    ) {
         this.serverManager =
                 new ServerManager(lineReader);
     }
@@ -63,6 +80,11 @@ public final class ServerCommandHandler {
                 return list(commandArgs[0]);
 
             case "create":
+                requireArguments(
+                        command,
+                        commandArgs,
+                        2
+                );
                 return create(commandArgs);
 
             case "start":
@@ -144,12 +166,7 @@ public final class ServerCommandHandler {
                 return backup(commandArgs[0]);
 
             case "delete":
-                requireArguments(
-                        command,
-                        commandArgs,
-                        1
-                );
-                return delete(commandArgs[0]);
+                return delete(commandArgs);
 
             case "update":
                 requireArguments(
@@ -165,17 +182,22 @@ public final class ServerCommandHandler {
                         commandArgs,
                         3
                 );
-                return importcmd(commandArgs);
+                return importCommand(commandArgs);
 
             case "restore":
                 requireArguments(
                         command,
                         commandArgs,
-                        1
+                        2
                 );
-                return restore(commandArgs[0]);
+                return restore(commandArgs);
 
             case "config":
+                requireArguments(
+                        command,
+                        commandArgs,
+                        3
+                );
                 return config(commandArgs);
 
             case "help":
@@ -190,22 +212,19 @@ public final class ServerCommandHandler {
                 );
 
                 printServerHelp();
-                
 
                 return 1;
         }
     }
 
-    public boolean isIdle()
-            throws IOException{
-
+    public boolean isIdle() {
         return serverManager.isIdle();
     }
 
     private void downloadBds(
             String version,
             Path destination
-    ) throws Exception {
+    ) throws IOException, InterruptedException {
 
         String url =
                 BDS_URL.formatted(version);
@@ -222,15 +241,25 @@ public final class ServerCommandHandler {
                     HttpRequest.newBuilder(
                                     URI.create(url)
                             )
+                            .timeout(
+                                    Duration.ofMinutes(10)
+                            )
                             .GET()
                             .build();
+
+            System.out.println(
+                    "Downloading from:"
+            );
+
+            System.out.println(
+                    "  " + url
+            );
 
             HttpResponse<Path> response =
                     httpClient.send(
                             request,
-                            HttpResponse.BodyHandlers.ofFile(
-                                    archive
-                            )
+                            HttpResponse.BodyHandlers
+                                    .ofFile(archive)
                     );
 
             if (response.statusCode() != 200) {
@@ -251,10 +280,22 @@ public final class ServerCommandHandler {
                             "bedrock_server"
                     );
 
-            if (Files.exists(executable)) {
+            if (!Files.isRegularFile(
+                    executable
+            )) {
 
-                executable.toFile()
-                        .setExecutable(true);
+                throw new IOException(
+                        "Downloaded BDS archive does not contain " +
+                                "'bedrock_server'."
+                );
+            }
+
+            if (!executable.toFile()
+                    .setExecutable(true)) {
+
+                throw new IOException(
+                        "Could not make bedrock_server executable."
+                );
             }
 
         } finally {
@@ -268,7 +309,7 @@ public final class ServerCommandHandler {
     /*
      * server create <name> <version>
      */
-     int create(String[] args) {
+    private int create(String[] args) {
 
         if (args.length != 2) {
 
@@ -282,25 +323,22 @@ public final class ServerCommandHandler {
         String name =
                 args[0];
 
-        String version =
-                args[1];
+        final String version;
 
         try {
-            if (version.equals("latest")) version = getLatestVersion()
-                    .replace("[", "")
-                    .replace("]", "");
-        }
-        catch (IOException e){
-            e.printStackTrace();
+            version =
+                    resolveVersion(
+                            args[1]
+                    );
+        } catch (ServerManagerException e) {
+
+            printError(e);
+            return 1;
         }
 
         try {
 
-            if (!version.matches("\\d+(?:\\.\\d+){3}")) {
-                throw new ServerManagerException(
-                        "Invalid BDS version: " + version
-                );
-            }
+            validateVersion(version);
 
             Path serverDirectory =
                     serverManager.createServer(name);
@@ -318,12 +356,25 @@ public final class ServerCommandHandler {
             );
 
             try {
+
                 downloadBds(
                         version,
                         serverDirectory
                 );
+
             } catch (Exception e) {
-                serverManager.deleteServer(name);
+
+                /*
+                 * The server was only partially created.
+                 * Remove it so failed creation does not leave
+                 * a fake/incomplete server behind.
+                 */
+                try {
+                    serverManager.deleteServer(name);
+                } catch (ServerManagerException cleanupError) {
+                    e.addSuppressed(cleanupError);
+                }
+
                 throw e;
             }
 
@@ -335,14 +386,11 @@ public final class ServerCommandHandler {
                             "."
             );
 
-            
-
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-            
             return 1;
 
         } catch (Exception e) {
@@ -354,22 +402,90 @@ public final class ServerCommandHandler {
                     )
             );
 
-            
-
             return 1;
+        }
+    }
+
+    private String resolveVersion(
+            String requested
+    ) throws ServerManagerException {
+
+        if (requested == null
+                || requested.isBlank()) {
+
+            throw new ServerManagerException(
+                    "Version cannot be empty."
+            );
+        }
+
+        if (!requested.equalsIgnoreCase(
+                "latest"
+        )) {
+            return requested;
+        }
+
+        try {
+
+            String latest =
+                    getLatestVersion();
+
+            if (latest == null
+                    || latest.isBlank()) {
+
+                throw new ServerManagerException(
+                        "Could not determine the latest BDS version."
+                );
+            }
+
+            /*
+             * getLatestVersion() currently returns a value that
+             * may be represented as a list, so clean the wrapper.
+             */
+            latest =
+                    latest
+                            .replace("[", "")
+                            .replace("]", "")
+                            .trim();
+
+            if (latest.contains(",")) {
+                latest =
+                        latest
+                                .split(",")[0]
+                                .trim();
+            }
+
+            validateVersion(latest);
+
+            return latest;
+
+        } catch (IOException e) {
+
+            throw new ServerManagerException(
+                    "Failed to determine the latest BDS version.",
+                    e
+            );
+        }
+    }
+
+    private void validateVersion(
+            String version
+    ) throws ServerManagerException {
+
+        if (!VERSION_PATTERN
+                .matcher(version)
+                .matches()) {
+
+            throw new ServerManagerException(
+                    "Invalid BDS version: " +
+                            version
+            );
         }
     }
 
     /*
      * server import <type> <server> <path>
-     *
-     * Future extensions:
-     *
-     * server import world ...
-     * server import mod ...
-     * server import pack ...
      */
-    private int importcmd(
+    private int importCommand(
             String[] args
     ) {
 
@@ -379,10 +495,26 @@ public final class ServerCommandHandler {
         String serverName =
                 args[1];
 
-        Path source =
-                Path.of(args[2])
-                        .toAbsolutePath()
-                        .normalize();
+        Path source;
+
+        try {
+
+            source =
+                    Path.of(args[2])
+                            .toAbsolutePath()
+                            .normalize();
+
+        } catch (Exception e) {
+
+            printError(
+                    new ServerManagerException(
+                            "Invalid source path.",
+                            e
+                    )
+            );
+
+            return 1;
+        }
 
         switch (type) {
 
@@ -406,8 +538,6 @@ public final class ServerCommandHandler {
                 System.err.println(
                         "  world"
                 );
-
-                
 
                 return 1;
         }
@@ -436,6 +566,19 @@ public final class ServerCommandHandler {
                 );
             }
 
+            ServerInstance server =
+                    serverManager.getInstance(
+                            serverName
+                    );
+
+            if (server.isRunning()) {
+
+                throw new ServerManagerException(
+                        "Cannot import a world while the server " +
+                                "is running. Stop it first."
+                );
+            }
+
             Path worldsDirectory =
                     serverManager
                             .getServerDirectory(
@@ -447,17 +590,32 @@ public final class ServerCommandHandler {
                     worldsDirectory
             );
 
+            String worldName =
+                    source.getFileName()
+                            .toString();
+
+            if (worldName.isBlank()
+                    || worldName.equals(".")
+                    || worldName.equals("..")
+                    || worldName.contains("/")
+                    || worldName.contains("\\")) {
+
+                throw new ServerManagerException(
+                        "Invalid world directory name: " +
+                                worldName
+                );
+            }
+
             Path destination =
                     worldsDirectory.resolve(
-                            source.getFileName()
-                                    .toString()
+                            worldName
                     );
 
             if (Files.exists(destination)) {
 
                 throw new ServerManagerException(
                         "A world named '" +
-                                destination.getFileName() +
+                                worldName +
                                 "' already exists."
                 );
             }
@@ -469,7 +627,7 @@ public final class ServerCommandHandler {
 
             System.out.println(
                     "Imported world '" +
-                            source.getFileName() +
+                            worldName +
                             "' into '" +
                             serverName +
                             "'."
@@ -494,7 +652,6 @@ public final class ServerCommandHandler {
             return 1;
         }
     }
-
 
     private static void extractZip(
             Path archive,
@@ -529,16 +686,19 @@ public final class ServerCommandHandler {
                             != null
             ) {
 
+                String entryName =
+                        entry.getName();
+
                 Path output =
                         normalizedDestination
                                 .resolve(
-                                        entry.getName()
+                                        entryName
                                 )
                                 .normalize();
 
                 /*
-                 * Prevent path traversal from
-                 * malicious archives.
+                 * Prevent ../ and absolute-path entries from
+                 * escaping the server directory.
                  */
                 if (!output.startsWith(
                         normalizedDestination
@@ -546,7 +706,7 @@ public final class ServerCommandHandler {
 
                     throw new IOException(
                             "Unsafe path in BDS archive: " +
-                                    entry.getName()
+                                    entryName
                     );
                 }
 
@@ -585,19 +745,61 @@ public final class ServerCommandHandler {
             Path destination
     ) throws IOException {
 
+        if (!Files.isDirectory(source)) {
+
+            throw new IOException(
+                    "Source directory does not exist: " +
+                            source
+            );
+        }
+
+        Path normalizedSource =
+                source.toAbsolutePath()
+                        .normalize();
+
+        Path normalizedDestination =
+                destination.toAbsolutePath()
+                        .normalize();
+
+        if (normalizedDestination.equals(
+                normalizedSource
+        )) {
+
+            throw new IOException(
+                    "Source and destination are identical."
+            );
+        }
+
+        if (normalizedDestination.startsWith(
+                normalizedSource
+        )) {
+
+            throw new IOException(
+                    "Destination cannot be inside source."
+            );
+        }
+
+        Files.createDirectories(
+                normalizedDestination
+        );
+
         try (
                 var paths =
-                        Files.walk(source)
+                        Files.walk(
+                                normalizedSource
+                        )
         ) {
 
             for (Path path :
                     paths.toList()) {
 
                 Path relative =
-                        source.relativize(path);
+                        normalizedSource.relativize(
+                                path
+                        );
 
                 Path target =
-                        destination.resolve(
+                        normalizedDestination.resolve(
                                 relative
                         );
 
@@ -609,11 +811,22 @@ public final class ServerCommandHandler {
 
                 } else {
 
+                    Path parent =
+                            target.getParent();
+
+                    if (parent != null) {
+                        Files.createDirectories(
+                                parent
+                        );
+                    }
+
                     Files.copy(
                             path,
                             target,
                             StandardCopyOption
-                                    .REPLACE_EXISTING
+                                    .REPLACE_EXISTING,
+                            StandardCopyOption
+                                    .COPY_ATTRIBUTES
                     );
                 }
             }
@@ -623,30 +836,49 @@ public final class ServerCommandHandler {
     public int list(String modifier) {
 
         try {
-            serverManager.listServers(modifier);
-            
+
+            serverManager.listServers(
+                    modifier
+            );
+
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-
             return 1;
 
         } catch (IOException e) {
 
-            System.err.println(e.getMessage());
+            printError(
+                    new ServerManagerException(
+                            "Failed to list servers.",
+                            e
+                    )
+            );
 
             return 1;
         }
     }
 
     public int start(String name) {
+
         try {
-            serverManager.startServer(name);
-            System.out.println("Server '" + name + "' started.");
+
+            serverManager.startServer(
+                    name
+            );
+
+            System.out.println(
+                    "Server '" +
+                            name +
+                            "' started."
+            );
+
             return 0;
+
         } catch (ServerManagerException e) {
+
             printError(e);
             return 1;
         }
@@ -655,15 +887,22 @@ public final class ServerCommandHandler {
     public int stop(String name) {
 
         try {
-            serverManager.stopServer(name);
+
+            serverManager.stopServer(
+                    name
+            );
+
+            System.out.println(
+                    "Server '" +
+                            name +
+                            "' stopped."
+            );
+
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-
-            
-
             return 1;
         }
     }
@@ -672,14 +911,21 @@ public final class ServerCommandHandler {
 
         try {
 
-            serverManager.restartServer(name);
-            
+            serverManager.restartServer(
+                    name
+            );
+
+            System.out.println(
+                    "Server '" +
+                            name +
+                            "' restarted."
+            );
+
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-            
             return 1;
         }
     }
@@ -687,14 +933,16 @@ public final class ServerCommandHandler {
     public int status(String name) {
 
         try {
-            serverManager.printStatus(name);
-            
+
+            serverManager.printStatus(
+                    name
+            );
+
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-            
             return 1;
         }
     }
@@ -702,14 +950,16 @@ public final class ServerCommandHandler {
     public int players(String name) {
 
         try {
-            serverManager.printPlayers(name);
-            
+
+            serverManager.printPlayers(
+                    name
+            );
+
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-            
             return 1;
         }
     }
@@ -717,13 +967,16 @@ public final class ServerCommandHandler {
     public int console(String name) {
 
         try {
-            serverManager.attachConsole(name);
+
+            serverManager.attachConsole(
+                    name
+            );
+
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-            
             return 1;
         }
     }
@@ -753,245 +1006,809 @@ public final class ServerCommandHandler {
 
         try {
 
-            serverManager.createBackup(name);
-            
+            serverManager.createBackup(
+                    name
+            );
+
             return 0;
 
         } catch (ServerManagerException e) {
 
             printError(e);
-            
             return 1;
         }
     }
 
-    private int restore(String servername) {
-        List<String> backups;
+    private int restore(
+            String[] args
+    ) {
+
+        String serverName =
+                args[0];
+
+        String worldName =
+                args[1];
+
+        final List<String> backups;
 
         try {
-            backups = serverManager.getBackups(servername);
+
+            backups =
+                    serverManager.getBackups(
+                            serverName,
+                            worldName
+                    );
+
         } catch (IOException e) {
-            System.out.println("Failed to get backups: " + e.getMessage());
+
+            printError(
+                    new ServerManagerException(
+                            "Failed to get backups.",
+                            e
+                    )
+            );
+
             return 1;
         }
 
         if (backups.isEmpty()) {
-            System.out.println("No backups found for " + servername);
+
+            System.out.println(
+                    "No backups found for " +
+                            serverName +
+                            "/" +
+                            worldName
+            );
+
             return 1;
         }
 
-        LineReader lineReader = serverManager.getLineReader();
+        LineReader lineReader =
+                serverManager.getLineReader();
 
         int selected = 0;
 
-        lineReader.getTerminal().enterRawMode();
-
         try {
-            lineReader.getTerminal().writer().print(
-                    "\033[?1049h\033[?25l"
-            );
-            lineReader.getTerminal().writer().flush();
+
+            lineReader
+                    .getTerminal()
+                    .enterRawMode();
+
+            lineReader
+                    .getTerminal()
+                    .writer()
+                    .print(
+                            "\033[?1049h\033[?25l"
+                    );
+
+            lineReader
+                    .getTerminal()
+                    .writer()
+                    .flush();
 
             while (true) {
-                var out = lineReader.getTerminal().writer();
 
-                out.print("\033[H\033[2J");
+                var terminal =
+                        lineReader.getTerminal();
 
-                out.println("Restore backup for \"" + servername + "\"");
+                var out =
+                        terminal.writer();
+
+                out.print(
+                        "\033[H\033[2J"
+                );
+
+                out.println(
+                        "Restore backup for \"" +
+                                serverName +
+                                "/" +
+                                worldName +
+                                "\""
+                );
+
                 out.println();
 
-                for (int i = 0; i < backups.size(); i++) {
+                for (int i = 0;
+                     i < backups.size();
+                     i++) {
+
                     out.printf(
                             "%s%s%n",
-                            i == selected ? "> " : "  ",
+                            i == selected
+                                    ? "> "
+                                    : "  ",
                             backups.get(i)
                     );
                 }
 
                 out.println();
-                out.print("↑/↓ Select    Enter Restore    Esc Cancel");
+
+                out.print(
+                        "↑/↓ Select    " +
+                                "Enter Restore    " +
+                                "Esc Cancel"
+                );
+
                 out.flush();
 
-                int key = lineReader.getTerminal()
-                        .reader()
-                        .read();
+                int key =
+                        terminal
+                                .reader()
+                                .read();
 
                 if (key == 27) {
-                    int next = lineReader.getTerminal().reader().read();
+
+                    int next =
+                            terminal
+                                    .reader()
+                                    .read();
 
                     if (next == '[') {
-                        int arrow = lineReader.getTerminal().reader().read();
+
+                        int arrow =
+                                terminal
+                                        .reader()
+                                        .read();
 
                         if (arrow == 'A') {
-                            selected = Math.max(0, selected - 1);
+
+                            selected =
+                                    Math.max(
+                                            0,
+                                            selected - 1
+                                    );
+
                         } else if (arrow == 'B') {
-                            selected = Math.min(
-                                    backups.size() - 1,
-                                    selected + 1
-                            );
+
+                            selected =
+                                    Math.min(
+                                            backups.size() - 1,
+                                            selected + 1
+                                    );
+
+                        } else {
+                            return 1;
                         }
+
                     } else {
+
                         return 1;
                     }
 
-                } else if (key == '\n' || key == '\r') {
+                } else if (
+                        key == '\n'
+                                || key == '\r'
+                ) {
+
                     try {
+
                         serverManager.restoreBackup(
-                                servername,
+                                serverName,
+                                worldName,
                                 backups.get(selected)
                         );
-                        
+
                         return 0;
+
                     } catch (ServerManagerException e) {
+
+                        printError(e);
                         return 1;
                     }
                 }
             }
+
         } catch (IOException e) {
-            return 1;
-        } finally {
-            lineReader.getTerminal().writer().print(
-                    "\033[?25h\033[?1049l"
+
+            printError(
+                    new ServerManagerException(
+                            "Restore interface failed.",
+                            e
+                    )
             );
-            lineReader.getTerminal().writer().flush();
+
+            return 1;
+
+        } finally {
+
+            lineReader
+                    .getTerminal()
+                    .writer()
+                    .print(
+                            "\033[?25h\033[?1049l"
+                    );
+
+            lineReader
+                    .getTerminal()
+                    .writer()
+                    .flush();
         }
     }
 
-    public int delete(String name) {
+    private int delete(
+            String[] args
+    ) throws ServerManagerException {
 
-        try {
+        if (args.length < 2) {
 
-            serverManager.deleteServer(name);
-            
-            return 0;
+            throw new ServerManagerException(
+                    "Usage: server delete " +
+                            "<server|backup> <name> [count]"
+            );
+        }
 
-        } catch (ServerManagerException e) {
+        String type =
+                args[0].toLowerCase();
 
-            printError(e);
-            
-            return 1;
+        String name =
+                args[1];
+
+        switch (type) {
+
+            case "server":
+
+                if (args.length != 2) {
+
+                    throw new ServerManagerException(
+                            "Usage: server delete " +
+                                    "server <name>"
+                    );
+                }
+
+                serverManager.deleteServer(
+                        name
+                );
+
+                System.out.println(
+                        "Server '" +
+                                name +
+                                "' deleted."
+                );
+
+                return 0;
+
+            case "backup":
+
+                if (args.length != 3) {
+
+                    throw new ServerManagerException(
+                            "Usage: server delete " +
+                                    "backup <name> <count>"
+                    );
+                }
+
+                int count;
+
+                try {
+
+                    count =
+                            Integer.parseInt(
+                                    args[2]
+                            );
+
+                } catch (NumberFormatException e) {
+
+                    throw new ServerManagerException(
+                            "Backup count must be a number.",
+                            e
+                    );
+                }
+
+                serverManager.deleteBackup(
+                        name,
+                        count
+                );
+
+                return 0;
+
+            default:
+
+                throw new ServerManagerException(
+                        "Unknown delete target: " +
+                                type
+                );
         }
     }
 
     public int update(String[] args) {
 
-        String name = args[0];
+        if (args.length != 2) {
 
-        try {
-            String currentVersion = serverManager.getInstance(name).getVersion();
-            String latestVersion = getLatestVersion()
-                    .replace("[", "")
-                    .replace("]", "");
-
-            latestVersion = latestVersion.substring(0, latestVersion.lastIndexOf('.'));
-
-            if (latestVersion.equals(currentVersion)) {
-                throw new ServerManagerException(
-                        "Server '" + name + "' is already on the latest version '" + latestVersion + "'"
-                );
-            }
-        } catch (IOException | ServerManagerException e) {
-            System.err.println(e.getMessage());
-            return 1;
-        }
-
-        List<Path> worlds;
-
-        try {
-            worlds = serverManager.updateServer(name);
-
-            for (Path world : worlds) {
-                System.out.println("Transferred world '" + world + "'");
-            }
-        }
-        catch (ServerManagerException e) {
-            System.err.println("Could not update server '" + name + "': " + e.getMessage());
-            return 1;
-        }
-
-        create(args);
-        try {
-            Path WORLDS_DIR = serverManager.getServerDirectory(name);
-            copyDirectory(
-                    serverManager.getUpdateBackupsDir().resolve(name).resolve("worlds"),
-                    serverManager.getServerDirectory(name).resolve("worlds")
+            System.err.println(
+                    "Usage: server update <name> <version>"
             );
 
-        } catch (ServerManagerException | IOException e){
-            System.err.println("Could not copy worlds '" + name + "': " + e.getMessage());
             return 1;
         }
 
-        // Transferring basic server.properties attributes to the new server
-        String[] preservedSettings = {
-                // Server identity
-                "server-name",
+        String name =
+                args[0];
 
-                // Gameplay
+        final String targetVersion;
+
+        try {
+
+            targetVersion =
+                    resolveVersion(
+                            args[1]
+                    );
+
+            validateVersion(
+                    targetVersion
+            );
+
+        } catch (ServerManagerException e) {
+
+            printError(e);
+            return 1;
+        }
+
+        String currentVersion;
+
+        try {
+
+            currentVersion =
+                    serverManager
+                            .getInstance(name)
+                            .getVersion();
+
+        } catch (ServerManagerException e) {
+
+            printError(e);
+            return 1;
+        }
+
+        if (currentVersion == null
+                || currentVersion.isBlank()) {
+
+            System.err.println(
+                    "Could not determine the current " +
+                            "BDS version for '" +
+                            name +
+                            "'."
+            );
+
+            return 1;
+        }
+
+        int comparison =
+                compareVersions(
+                        targetVersion,
+                        currentVersion
+                );
+
+        if (comparison == 0) {
+
+            System.err.println(
+                    "Server '" +
+                            name +
+                            "' is already on BDS " +
+                            currentVersion +
+                            "."
+            );
+
+            return 1;
+        }
+
+        if (comparison < 0) {
+
+            System.err.println(
+                    "Refusing to downgrade server '" +
+                            name +
+                            "' from " +
+                            currentVersion +
+                            " to " +
+                            targetVersion +
+                            "."
+            );
+
+            return 1;
+        }
+
+        Path updateBackup =
+                serverManager
+                        .getUpdateBackupsDir()
+                        .resolve(name);
+
+        try {
+
+            /*
+             * ServerManager creates a temporary complete copy
+             * and removes the old live server.
+             */
+            serverManager.updateServer(name);
+
+        } catch (ServerManagerException e) {
+
+            printError(e);
+            return 1;
+        }
+
+        System.out.println(
+                "Updating '" +
+                        name +
+                        "' from " +
+                        currentVersion +
+                        " to " +
+                        targetVersion +
+                        "..."
+        );
+
+        /*
+         * create() builds a completely fresh BDS installation.
+         * If anything fails, restore the old installation from
+         * the temporary update backup.
+         */
+        int createResult =
+                create(
+                        new String[]{
+                                name,
+                                targetVersion
+                        }
+                );
+
+        if (createResult != 0) {
+
+            System.err.println(
+                    "New BDS installation failed. " +
+                            "Attempting rollback..."
+            );
+
+            if (rollbackUpdate(
+                    name,
+                    updateBackup
+            )) {
+
+                System.err.println(
+                        "Rollback completed successfully."
+                );
+
+            } else {
+
+                System.err.println(
+                        "CRITICAL: automatic rollback failed."
+                );
+            }
+
+            return 1;
+        }
+
+        try {
+
+            Path newServerDirectory =
+                    serverManager
+                            .getServerDirectory(
+                                    name
+                            );
+
+            Path oldWorlds =
+                    updateBackup
+                            .resolve("worlds");
+
+            Path newWorlds =
+                    newServerDirectory
+                            .resolve("worlds");
+
+            if (Files.isDirectory(oldWorlds)) {
+
+                if (Files.exists(newWorlds)) {
+                    deleteDirectory(newWorlds);
+                }
+
+                copyDirectory(
+                        oldWorlds,
+                        newWorlds
+                );
+            }
+
+            preserveServerProperties(
+                    updateBackup,
+                    newServerDirectory
+            );
+
+            /*
+             * Update succeeded. The temporary old server is
+             * no longer needed.
+             */
+            deleteDirectory(
+                    updateBackup
+            );
+
+            System.out.println(
+                    "Server '" +
+                            name +
+                            "' updated successfully."
+            );
+
+            System.out.println(
+                    "  " +
+                            currentVersion +
+                            " -> " +
+                            targetVersion
+            );
+
+            return 0;
+
+        } catch (Exception e) {
+
+            System.err.println(
+                    "Failed while transferring server data: " +
+                            e.getMessage()
+            );
+
+            System.err.println(
+                    "Attempting rollback..."
+            );
+
+            if (rollbackUpdate(
+                    name,
+                    updateBackup
+            )) {
+
+                System.err.println(
+                        "Rollback completed successfully."
+                );
+
+            } else {
+
+                System.err.println(
+                        "CRITICAL: automatic rollback failed."
+                );
+            }
+
+            return 1;
+        }
+    }
+
+    private void preserveServerProperties(
+            Path oldServerDirectory,
+            Path newServerDirectory
+    ) throws IOException {
+
+        Path oldProperties =
+                oldServerDirectory.resolve(
+                        "server.properties"
+                );
+
+        if (!Files.isRegularFile(
+                oldProperties
+        )) {
+            return;
+        }
+
+        String[] preservedSettings = {
+                "server-name",
                 "gamemode",
                 "difficulty",
                 "allow-cheats",
-
-                // Player settings
                 "max-players",
                 "online-mode",
                 "allow-list",
-
-                // World
                 "level-name",
                 "level-seed",
-
-                // Network
                 "server-port",
                 "server-portv6",
-
-                // Misc
                 "view-distance",
                 "tick-distance",
                 "player-idle-timeout"
         };
 
+        for (String key :
+                preservedSettings) {
+
+            String value =
+                    serverManager.getVariable(
+                            oldServerDirectory,
+                            key
+                    );
+
+            if (value == null) {
+                continue;
+            }
+
+            try {
+
+                serverManager.changeConfig(
+                        key,
+                        value,
+                        newServerDirectory
+                                .getFileName()
+                                .toString()
+                );
+            } catch (ServerManagerException e) {
+                System.err.println(e.getMessage());
+            }
+        }
+    }
+
+    private boolean rollbackUpdate(
+            String name,
+            Path updateBackup
+    ) {
+
         try {
-            for (String key : preservedSettings) {
-                config(
-                        new String[] {
-                                key,
-                                serverManager.getVariable(
-                                        serverManager.getBackupsDir(),
-                                        key
-                                ),
+
+            if (!Files.isDirectory(
+                    updateBackup
+            )) {
+                return false;
+            }
+
+            Path currentServer =
+                    serverManager
+                            .getServerDirectory(
+                                    name
+                            );
+
+            if (Files.exists(currentServer)) {
+
+                try {
+
+                    if (serverManager
+                            .getInstance(name)
+                            .isRunning()) {
+
+                        serverManager.stopServer(
                                 name
-                        }
+                        );
+                    }
+
+                } catch (ServerManagerException ignored) {
+                }
+
+                deleteDirectory(
+                        currentServer
+                );
+            }
+
+            Path restoredServer =
+                    serverManager.createServer(
+                            name
+                    );
+
+            deleteDirectory(
+                    restoredServer
+            );
+
+            copyDirectory(
+                    updateBackup,
+                    restoredServer
+            );
+
+            System.out.println(
+                    "Restored previous server installation."
+            );
+
+            return true;
+
+        } catch (Exception e) {
+
+            System.err.println(
+                    "Rollback error: " +
+                            e.getMessage()
+            );
+
+            return false;
+        }
+    }
+
+    public int config(
+            String[] args
+    ) {
+
+        if (args.length != 3) {
+
+            System.err.println(
+                    "Usage: server config " +
+                            "<name> <key> <value>"
+            );
+
+            return 1;
+        }
+
+        String name =
+                args[0];
+
+        String key =
+                args[1];
+
+        String value =
+                args[2];
+
+        try {
+
+            ServerInstance server =
+                    serverManager.getInstance(
+                            name
+                    );
+
+            if (server.isRunning()) {
+
+                throw new ServerManagerException(
+                        "Cannot change server.properties " +
+                                "while the server is running. " +
+                                "Stop it first."
+                );
+            }
+
+            serverManager.changeConfig(
+                    key,
+                    value,
+                    name
+            );
+
+            System.out.println(
+                    "Updated " +
+                            key +
+                            "=" +
+                            value
+            );
+
+            return 0;
+
+        } catch (
+                ServerManagerException |
+                IOException e
+        ) {
+
+            printError(
+                    e instanceof ServerManagerException
+                            ? (ServerManagerException) e
+                            : new ServerManagerException(
+                            "Failed to change configuration.",
+                            e
+                    )
+            );
+
+            return 1;
+        }
+    }
+
+    private int compareVersions(
+            String first,
+            String second
+    ) {
+
+        String[] firstParts =
+                first.split("\\.");
+
+        String[] secondParts =
+                second.split("\\.");
+
+        int length =
+                Math.max(
+                        firstParts.length,
+                        secondParts.length
+                );
+
+        for (int i = 0;
+             i < length;
+             i++) {
+
+            int firstValue =
+                    i < firstParts.length
+                            ? Integer.parseInt(
+                            firstParts[i]
+                    )
+                            : 0;
+
+            int secondValue =
+                    i < secondParts.length
+                            ? Integer.parseInt(
+                            secondParts[i]
+                    )
+                            : 0;
+
+            if (firstValue != secondValue) {
+
+                return Integer.compare(
+                        firstValue,
+                        secondValue
                 );
             }
         }
 
-        catch (IOException e) {
-            System.out.println("server.properties not found in " + serverManager.getUpdateBackupsDir() + "/" + name);
-        }
-
-        System.out.println("Server '" + name + "' updated successfully");
-
         return 0;
-    }
-
-    public int config(String[] args) {
-
-        try {
-
-            serverManager.changeConfig(args[1], args[2], args[0]);
-            
-            return 0;
-
-        }
-
-        catch (ServerManagerException | IOException e){
-
-            e.printStackTrace(System.err);
-            
-            return 1;
-
-        }
     }
 
     private void requireArguments(
@@ -1017,7 +1834,7 @@ public final class ServerCommandHandler {
         return switch (command) {
 
             case "create",
-                 "update"->
+                 "update" ->
                     " <name> <version>";
 
             case "start",
@@ -1026,9 +1843,7 @@ public final class ServerCommandHandler {
                  "status",
                  "players",
                  "console",
-                 "backup",
-                 "delete",
-                 "restore" ->
+                 "backup" ->
                     " <name>";
 
             case "exec" ->
@@ -1038,7 +1853,16 @@ public final class ServerCommandHandler {
                     " <type> <server> <path>";
 
             case "list" ->
-                " <servers|backups>";
+                    " <servers|backups>";
+
+            case "restore" ->
+                    " <name> <world-name>";
+
+            case "config" ->
+                    " <name> <key> <value>";
+
+            case "delete" ->
+                    " <server|backup> <name> [count]";
 
             default ->
                     "";
@@ -1052,10 +1876,11 @@ public final class ServerCommandHandler {
                 Server commands:
                 
                   server list <servers|backups>
-                      List all configured servers.
+                      List configured servers or backups.
                 
                   server create <name> <version>
                       Create a server using the specified BDS version.
+                      Use "latest" for the newest version.
                 
                   server start <name>
                       Start a server.
@@ -1067,7 +1892,7 @@ public final class ServerCommandHandler {
                       Restart a server.
                 
                   server status <name>
-                      Show server status and PID.
+                      Show server status, PID, RAM and CPU.
                 
                   server players <name>
                       Show connected players.
@@ -1079,19 +1904,26 @@ public final class ServerCommandHandler {
                       Execute a command on a server.
                 
                   server backup <name>
-                      Create a world backup.
+                      Create a backup of all worlds.
                 
-                  server delete <name>
+                  server delete server <name>
                       Delete a stopped server.
                 
-                  server import <option> <server> <path>
-                      Import something from somewhere.
+                  server delete backup <name> <count>
+                      Delete the oldest backup snapshots.
                 
-                      server import world <server> <path>
-                          Import a Minecraft world.
+                  server import world <server> <path>
+                      Import a Minecraft world.
                 
                   server update <name> <version>
-                      Update an existing outdated server
+                      Update a server to a newer BDS version.
+                      Use "latest" for the newest version.
+                
+                  server restore <name> <world-name>
+                      Interactively restore a world backup.
+                
+                  server config <name> <key> <value>
+                      Change a server.properties value.
                 
                 """);
     }
@@ -1106,4 +1938,64 @@ public final class ServerCommandHandler {
         );
     }
 
+    private List<String> parseArguments(
+            String input
+    ) {
+
+        List<String> args =
+                new java.util.ArrayList<>();
+
+        Matcher matcher =
+                ARGUMENT_PATTERN.matcher(
+                        input
+                );
+
+        while (matcher.find()) {
+
+            if (matcher.group(1) != null) {
+
+                args.add(
+                        matcher.group(1)
+                );
+
+            } else if (
+                    matcher.group(2) != null
+            ) {
+
+                args.add(
+                        matcher.group(2)
+                );
+
+            } else {
+
+                args.add(
+                        matcher.group(3)
+                );
+            }
+        }
+
+        return args;
+    }
+
+    private static void deleteDirectory(
+            Path directory
+    ) throws IOException {
+
+        if (!Files.exists(directory)) {
+            return;
+        }
+
+        try (var paths =
+                     Files.walk(directory)) {
+
+            for (Path path :
+                    paths.sorted(
+                            java.util.Comparator
+                                    .reverseOrder()
+                    ).toList()) {
+
+                Files.deleteIfExists(path);
+            }
+        }
+    }
 }

@@ -18,13 +18,17 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.krxoid.ServerManager.ROOT;
 
 public final class CommandDispatcher implements AutoCloseable {
 
-    public static final String VERSION = "1.4.0";
+    public static final String VERSION = "1.5.0";
 
     public static final Path VERSIONS_FILE =
             ROOT.resolve("versions.json");
@@ -123,8 +127,6 @@ public final class CommandDispatcher implements AutoCloseable {
             if (trimmed.equalsIgnoreCase("exit") ||
                     trimmed.equalsIgnoreCase("quit")) {
 
-                try {
-
                     if (serverHandler.isIdle()) {
                         break;
                     }
@@ -133,14 +135,6 @@ public final class CommandDispatcher implements AutoCloseable {
                             "Could not exit rock-core: " +
                                     "A server is still running"
                     );
-
-                } catch (IOException e) {
-
-                    lineReader.printAbove(
-                            "Error checking server state: " +
-                                    e.getMessage()
-                    );
-                }
 
                 continue;
             }
@@ -265,6 +259,7 @@ public final class CommandDispatcher implements AutoCloseable {
                   server delete <name>
                   server import world <server> <path>
                   server config <name> <variable> <value>
+                  server restore <name> <world-name>
                 
                 Global:
                   help
@@ -418,15 +413,24 @@ public final class CommandDispatcher implements AutoCloseable {
         );
     }
 
-    private String[] parseArguments(
-            String line
-    ) {
+    private String[] parseArguments(String input) {
+        List<String> args = new ArrayList<>();
 
-        return line
-                .trim()
-                .split(
-                        "\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)"
-                );
+        Matcher matcher = Pattern.compile(
+                "'([^']*)'|\"([^\"]*)\"|(\\S+)"
+        ).matcher(input);
+
+        while (matcher.find()) {
+            if (matcher.group(1) != null) {
+                args.add(matcher.group(1));
+            } else if (matcher.group(2) != null) {
+                args.add(matcher.group(2));
+            } else {
+                args.add(matcher.group(3));
+            }
+        }
+
+        return args.toArray(new String[0]);
     }
 
     @Override

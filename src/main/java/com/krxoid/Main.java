@@ -77,6 +77,7 @@ public final class Main {
                   server import world <server> <path>
                   server config <name> <variable> <value>
                   server update <name> <version>
+                  server restore <name> <world-name>
                 
                 Run 'rock' without arguments to enter
                 the interactive Rock Core shell.
