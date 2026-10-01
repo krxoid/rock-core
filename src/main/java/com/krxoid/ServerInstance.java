@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 
 public final class ServerInstance {
 
-    private final String name;
+    private String name;
     private final String version;
     private final Path directory;
     private final Path executable;
@@ -46,6 +46,10 @@ public final class ServerInstance {
 
     public String getName() {
         return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getVersion() {

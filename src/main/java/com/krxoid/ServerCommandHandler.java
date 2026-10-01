@@ -200,6 +200,14 @@ public final class ServerCommandHandler {
                 );
                 return config(commandArgs);
 
+            case "rename":
+                requireArguments(
+                        command,
+                        commandArgs,
+                        2
+                );
+                return rename(commandArgs);
+
             case "help":
                 printServerHelp();
                 return 0;
@@ -429,8 +437,7 @@ public final class ServerCommandHandler {
             String latest =
                     getLatestVersion();
 
-            if (latest == null
-                    || latest.isBlank()) {
+            if (latest.isBlank()) {
 
                 throw new ServerManagerException(
                         "Could not determine the latest BDS version."
@@ -1764,6 +1771,29 @@ public final class ServerCommandHandler {
         }
     }
 
+    public int rename(String[] args) {
+
+        String name = args[0];
+        String newName = args[1];
+
+        try {
+
+            serverManager.renameServer(
+                    name,
+                    newName
+            );
+
+            System.out.println("Renamed server '" + name + "' to '" + newName + "'");
+
+            return 0;
+
+        } catch (ServerManagerException e) {
+
+            System.err.println(e.getMessage());
+            return 1;
+        }
+    }
+
     private int compareVersions(
             String first,
             String second
@@ -1864,6 +1894,9 @@ public final class ServerCommandHandler {
             case "delete" ->
                     " <server|backup> <name> [count]";
 
+            case "rename" ->
+                    " <name> <new-name>";
+
             default ->
                     "";
         };
@@ -1908,6 +1941,9 @@ public final class ServerCommandHandler {
                 
                   server delete server <name>
                       Delete a stopped server.
+                
+                  server rename <name> <new-name>
+                      Change a server's name.
                 
                   server delete backup <name> <count>
                       Delete the oldest backup snapshots.

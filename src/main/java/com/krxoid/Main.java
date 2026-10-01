@@ -74,6 +74,7 @@ public final class Main {
                   server exec <name> <command>
                   server backup <name>
                   server delete <name>
+                  server rename <name> <new-name>
                   server import world <server> <path>
                   server config <name> <variable> <value>
                   server update <name> <version>

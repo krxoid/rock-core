@@ -115,6 +115,7 @@ server import world <server> <path>
 server config <name> <variable> <value>
 server update <name> <version>
 server restore <name> <world-name>
+server rename <name> <new-name>
 ```
 
 External operations such as acquiring, extracting, and updating BDS distributions are handled at this layer rather than by the lower-level server state manager.

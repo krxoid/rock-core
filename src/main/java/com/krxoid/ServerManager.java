@@ -1330,6 +1330,26 @@ public final class ServerManager {
         }
     }
 
+    public void renameServer(String name, String newName)
+            throws ServerManagerException{
+
+        try {
+            Files.move(SERVERS_DIR.resolve(name), SERVERS_DIR.resolve(newName));
+        } catch (IOException e) {
+            throw new ServerManagerException(
+                    "Could not rename directory " +
+                            SERVERS_DIR.resolve(name)
+                                    .toAbsolutePath()
+            );
+        }
+
+        ServerInstance instance = getInstance(name);
+        instances.remove(name);
+
+        instance.setName(newName);
+        instances.put(newName, instance);
+    }
+
     public ServerInstance getInstance(
             String name
     ) throws ServerManagerException {
