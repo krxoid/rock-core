@@ -18,9 +18,10 @@ public final class Main {
 
             try {
                 dispatcher.fetchVersions();
-            }
-            catch (IOException | InterruptedException e) {
-                System.err.println("Could not fetch versions.json");
+            } catch (IOException | InterruptedException e) {
+                System.err.println(
+                        "Could not fetch versions.json"
+                );
             }
 
             dispatcher.startShell();
@@ -79,6 +80,7 @@ public final class Main {
                   server config <get|set> <name> <variable> [value]
                   server update <name> <version>
                   server restore <name> <world-name>
+                  server logs <name> <count>
                 
                 Run 'rock' without arguments to enter
                 the interactive Rock Core shell.

@@ -12,6 +12,7 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
@@ -21,13 +22,14 @@ public final class ServerInstance {
     private final String version;
     private final Path directory;
     private final Path executable;
+    private final Path logFile;
     private final LineReader lineReader;
-
     private final Object lifecycleLock =
             new Object();
 
     private Process process;
     private BufferedWriter writer;
+    private BufferedWriter logWriter;
     private boolean attached;
 
     public ServerInstance(
@@ -35,12 +37,17 @@ public final class ServerInstance {
             String version,
             Path directory,
             LineReader lineReader
-    ) {
+    ) throws IOException {
         this.name = name;
         this.version = version;
         this.directory = directory;
         this.executable =
                 directory.resolve("bedrock_server");
+        this.logFile =
+                directory.resolve("server.log");
+        if (Files.notExists(logFile)) {
+            Files.createFile(logFile);
+        }
         this.lineReader = lineReader;
     }
 
@@ -144,8 +151,16 @@ public final class ServerInstance {
                                 )
                         );
 
+                BufferedWriter newLogWriter =
+                        Files.newBufferedWriter(
+                                logFile,
+                                StandardOpenOption.CREATE,
+                                StandardOpenOption.APPEND
+                        );
+
                 process = newProcess;
                 writer = newWriter;
+                logWriter = newLogWriter;
                 attached = false;
 
                 startOutputReader(newProcess);
@@ -154,6 +169,7 @@ public final class ServerInstance {
 
                 process = null;
                 writer = null;
+                logWriter = null;
                 attached = false;
 
                 throw new ServerManagerException(
@@ -556,6 +572,7 @@ public final class ServerInstance {
                  * attached to the server console, because
                  * the main `rock >` prompt may currently
                  * be waiting for input.
+                 * Clanker generated comments*
                  */
                 lineReader.printAbove(
                         "[" +
@@ -563,6 +580,10 @@ public final class ServerInstance {
                                 "] " +
                                 line
                 );
+
+                logWriter.write(line);
+                logWriter.newLine();
+                logWriter.flush();
             }
 
         } catch (IOException ignored) {

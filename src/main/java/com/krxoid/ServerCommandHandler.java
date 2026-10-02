@@ -203,6 +203,14 @@ public final class ServerCommandHandler {
                 );
                 return rename(commandArgs);
 
+            case "logs":
+                requireArguments(
+                        command,
+                        commandArgs,
+                        2
+                );
+                return logs(commandArgs);
+
             case "help":
                 printServerHelp();
                 return 0;
@@ -1235,7 +1243,7 @@ public final class ServerCommandHandler {
 
             throw new ServerManagerException(
                     "Usage: server delete " +
-                            "<server|backup> <name> [count]"
+                            "<server|backup|logs> <name> [count]"
             );
         }
 
@@ -1299,6 +1307,28 @@ public final class ServerCommandHandler {
                 serverManager.deleteBackup(
                         name,
                         count
+                );
+
+                return 0;
+
+            case "logs":
+
+                if (args.length != 2) {
+
+                    throw new ServerManagerException(
+                            "Usage: server delete " +
+                                    "logs <name>"
+                    );
+                }
+
+                serverManager.deleteLogs(
+                        name
+                );
+
+                System.out.println(
+                        "Logs for server '" +
+                                name +
+                                "' deleted."
                 );
 
                 return 0;
@@ -1600,7 +1630,7 @@ public final class ServerCommandHandler {
 
             String value =
                     serverManager.getVariable(
-                            oldServerDirectory,
+                            oldServerDirectory.getFileName().toString(),
                             key
                     );
 
@@ -1764,9 +1794,9 @@ public final class ServerCommandHandler {
                                 "<name> <key>"
                     );
                 System.out.println(
-                        serverManager.getConfig(
-                                key,
-                                name
+                        serverManager.getVariable(
+                                name,
+                                key
                         )
                 );
             } else
@@ -1813,6 +1843,44 @@ public final class ServerCommandHandler {
             printError(e);
             return 1;
         }
+    }
+
+    public int logs(String[] args)
+            throws ServerManagerException {
+
+        String name = args[0];
+        int count;
+
+        try {
+            count = Integer.parseInt(args[1]);
+        } catch (NumberFormatException e) {
+            System.err.println(
+                    usageArguments(
+                            "Error: Count should be a number"
+                    )
+            );
+            return 1;
+        }
+
+        List<String> logs;
+        try {
+            logs =
+                    serverManager.getLogs(
+                            name,
+                            count
+                    );
+        } catch (IOException e) {
+            System.err.println(
+                    "Could not read logs: " +
+                    e
+            );
+            return 1;
+        }
+
+        for (String log : logs) {
+            System.out.println(log);
+        }
+        return 0;
     }
 
     private int compareVersions(
@@ -1913,10 +1981,13 @@ public final class ServerCommandHandler {
                     " <get|set> <name> <key> [value]";
 
             case "delete" ->
-                    " <server|backup> <name> [count]";
+                    " <server|backup|logs> <name> [count]";
 
             case "rename" ->
                     " <name> <new-name>";
+
+            case "logs" ->
+                    " <name> <count>";
 
             default ->
                     "";
@@ -1981,6 +2052,9 @@ public final class ServerCommandHandler {
                 
                   server config <get|set> <name> <key> [value]
                       Change a server.properties value.
+                
+                  server logs <name> <count>
+                      Get last x lines of logs from a server
                 
                 """);
     }

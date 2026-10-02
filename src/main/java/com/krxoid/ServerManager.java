@@ -2,6 +2,7 @@ package com.krxoid;
 
 import org.jline.reader.LineReader;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.*;
@@ -793,66 +794,6 @@ public final class ServerManager {
         );
     }
 
-    public String getConfig(
-            String variable,
-            String name
-    ) throws ServerManagerException {
-
-        List<String> config;
-
-        Objects.requireNonNull(
-                variable,
-                "variable"
-        );
-
-        Path configPath =
-                getServerDirectory(name)
-                        .resolve("server.properties");
-
-        if (!Files.isRegularFile(configPath)) {
-            throw new ServerManagerException(
-                    "server.properties does not exist."
-            );
-        }
-        try {
-            config =
-                    Files.readAllLines(configPath);
-        } catch (IOException e) {
-            throw new ServerManagerException("Could not read server.properties");
-        }
-
-        for (String s : config) {
-
-            String line =
-                    s.trim();
-
-            if (line.isEmpty()
-                    || line.startsWith("#")) {
-                continue;
-            }
-
-            int separator =
-                    line.indexOf('=');
-
-            if (separator == -1) {
-                continue;
-            }
-
-            String key =
-                    line.substring(
-                            0,
-                            separator
-                    ).trim();
-
-            if (key.equals(variable)) {
-                return s;
-            }
-        }
-
-        throw new ServerManagerException("Key '" + variable + "' not found");
-
-    }
-
     public void printPlayers(String name)
             throws ServerManagerException {
 
@@ -1390,6 +1331,15 @@ public final class ServerManager {
         }
     }
 
+    public void deleteLogs(String name)
+            throws ServerManagerException {
+        try {
+            Files.deleteIfExists(getServerDirectory(name).resolve("server.log"));
+        } catch (IOException e) {
+            throw new ServerManagerException(e.getMessage());
+        }
+    }
+
     public void renameServer(String name, String newName)
             throws ServerManagerException{
 
@@ -1408,6 +1358,36 @@ public final class ServerManager {
 
         instance.setName(newName);
         instances.put(newName, instance);
+    }
+
+    public List<String> getLogs(String name, int count)
+            throws IOException {
+
+        Deque<String> lines =
+                new ArrayDeque<>(count);
+
+        try (BufferedReader reader =
+                     Files.newBufferedReader(
+                             SERVERS_DIR
+                                     .resolve(name)
+                                     .resolve("server.log"
+                                     )
+                     )
+        ) {
+
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+
+                if (lines.size() == count) {
+                    lines.removeFirst();
+                }
+
+                lines.addLast(line);
+            }
+        }
+
+        return new ArrayList<>(lines);
     }
 
     public ServerInstance getInstance(
@@ -1449,13 +1429,19 @@ public final class ServerManager {
             );
         }
 
-        ServerInstance instance =
-                new ServerInstance(
-                        name,
-                        version,
-                        directory,
-                        lineReader
-                );
+        ServerInstance instance;
+
+        try {
+            instance =
+                    new ServerInstance(
+                            name,
+                            version,
+                            directory,
+                            lineReader
+                    );
+        } catch (IOException e) {
+            throw new ServerManagerException("Could not create logs file");
+        }
 
         instances.put(
                 name,
@@ -1472,48 +1458,47 @@ public final class ServerManager {
             return;
         }
 
-        try (Stream<Path> stream =
-                     Files.list(SERVERS_DIR)) {
+        try (Stream<Path> stream = Files.list(SERVERS_DIR)) {
 
-            stream
-                    .filter(Files::isDirectory)
-                    .forEach(path -> {
+            for (Path path : stream.filter(Files::isDirectory).toList()) {
 
-                        String name =
-                                path.getFileName()
-                                        .toString();
+                String name =
+                        path.getFileName().toString();
 
-                        String version = null;
+                String version = null;
 
-                        try {
-                            version =
-                                    getServerVersion(path);
+                try {
+                    version = getServerVersion(path);
+                } catch (IOException e) {
+                    System.err.println(
+                            "Could not determine version for '" +
+                                    name +
+                                    "'."
+                    );
+                }
 
-                        } catch (IOException e) {
-
-                            System.err.println(
-                                    "Could not determine version " +
-                                            "for '" +
-                                            name +
-                                            "'."
-                            );
-                        }
-
-                        instances.put(
-                                name,
-                                new ServerInstance(
-                                        name,
-                                        version,
-                                        path,
-                                        lineReader
-                                )
-                        );
-                    });
-
+                try {
+                    instances.put(
+                            name,
+                            new ServerInstance(
+                                    name,
+                                    version,
+                                    path,
+                                    lineReader
+                            )
+                    );
+                } catch (IOException e) {
+                    throw new ServerManagerException(
+                            "Could not create logs file for '" +
+                                    name +
+                                    "'",
+                            e
+                    );
+                }
+            }
         } catch (IOException e) {
-
             throw new ServerManagerException(
-                    "Failed to load server instances.",
+                    "Could not list server directory.",
                     e
             );
         }
@@ -1656,9 +1641,13 @@ public final class ServerManager {
     }
 
     protected String getVariable(
-            Path serverPath,
+            String name,
             String variable
     ) throws IOException {
+
+        Path serverPath =
+                SERVERS_DIR
+                        .resolve(name);
 
         Path properties =
                 serverPath.resolve(

@@ -18,6 +18,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -261,6 +262,7 @@ public final class CommandDispatcher implements AutoCloseable {
                   server import world <server> <path>
                   server config <get|set> <name> <variable> [value]
                   server restore <name> <world-name>
+                  server logs <name> <count>
                 
                 Global:
                   help
@@ -281,7 +283,9 @@ public final class CommandDispatcher implements AutoCloseable {
         );
 
         HttpClient client =
-                HttpClient.newHttpClient();
+                HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofSeconds(5))
+                        .build();
 
         IOException lastException = null;
 
@@ -293,6 +297,7 @@ public final class CommandDispatcher implements AutoCloseable {
                         HttpRequest.newBuilder(
                                         BDS_VERSIONS_URI
                                 )
+                                .timeout(Duration.ofSeconds(10))
                                 .GET()
                                 .build();
 

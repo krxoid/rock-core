@@ -27,6 +27,7 @@ A graphical interface is currently in development using Qt.
 * Automatic update rollback on failure
 * Filesystem-based server state
 * Linux package support
+* File based logging
 
 ## Philosophy
 
@@ -110,12 +111,13 @@ server console <name>
 server exec <name> <command>
 server backup <name>
 server restore <name> <world> <timestamp>
-server delete <server|backup> <name> [count]
+server delete <server|backup|logs> <name> [count]
 server import world <server> <path>
 server config <get|set> <name> <variable> [value]
 server update <name> <version>
 server restore <name> <world-name>
 server rename <name> <new-name>
+server logs <name> <count>
 ```
 
 External operations such as acquiring, extracting, and updating BDS distributions are handled at this layer rather than by the lower-level server state manager.
