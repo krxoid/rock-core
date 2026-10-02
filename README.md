@@ -112,7 +112,7 @@ server backup <name>
 server restore <name> <world> <timestamp>
 server delete <server|backup> <name> [count]
 server import world <server> <path>
-server config <name> <variable> <value>
+server config <get|set> <name> <variable> [value]
 server update <name> <version>
 server restore <name> <world-name>
 server rename <name> <new-name>

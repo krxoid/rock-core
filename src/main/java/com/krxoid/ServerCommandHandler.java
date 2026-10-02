@@ -193,11 +193,6 @@ public final class ServerCommandHandler {
                 return restore(commandArgs);
 
             case "config":
-                requireArguments(
-                        command,
-                        commandArgs,
-                        3
-                );
                 return config(commandArgs);
 
             case "rename":
@@ -1615,7 +1610,7 @@ public final class ServerCommandHandler {
 
             try {
 
-                serverManager.changeConfig(
+                serverManager.setConfig(
                         key,
                         value,
                         newServerDirectory
@@ -1703,24 +1698,25 @@ public final class ServerCommandHandler {
             String[] args
     ) {
 
-        if (args.length != 3) {
+        if (args.length < 3) {
 
             System.err.println(
                     "Usage: server config " +
-                            "<name> <key> <value>"
+                            "<get|set> <name> <key> [value]"
             );
 
             return 1;
         }
 
-        String name =
+        String operation =
                 args[0];
 
-        String key =
+        String name =
                 args[1];
 
-        String value =
+        String key =
                 args[2];
+
 
         try {
 
@@ -1738,18 +1734,43 @@ public final class ServerCommandHandler {
                 );
             }
 
-            serverManager.changeConfig(
-                    key,
-                    value,
-                    name
-            );
+            if (args[0].equalsIgnoreCase("set")) {
 
-            System.out.println(
-                    "Updated " +
-                            key +
-                            "=" +
-                            value
-            );
+                if (args.length!=4)
+                    throw new ServerManagerException(
+                            "Usage: server config set " +
+                                    "<name> <key> <value>"
+                    );
+
+                String value = args[3];
+
+                serverManager.setConfig(
+                        key,
+                        value,
+                        name
+                );
+
+                System.out.println(
+                        "Updated " +
+                                key +
+                                "=" +
+                                value
+                );
+            } else if (operation.equalsIgnoreCase("get")) {
+
+                if (args.length!=3)
+                    throw new ServerManagerException(
+                            "Usage: server config get " +
+                                "<name> <key>"
+                    );
+                System.out.println(
+                        serverManager.getConfig(
+                                key,
+                                name
+                        )
+                );
+            } else
+                System.err.println(usageArguments("config"));
 
             return 0;
 
@@ -1789,7 +1810,7 @@ public final class ServerCommandHandler {
 
         } catch (ServerManagerException e) {
 
-            System.err.println(e.getMessage());
+            printError(e);
             return 1;
         }
     }
@@ -1889,7 +1910,7 @@ public final class ServerCommandHandler {
                     " <name> <world-name>";
 
             case "config" ->
-                    " <name> <key> <value>";
+                    " <get|set> <name> <key> [value]";
 
             case "delete" ->
                     " <server|backup> <name> [count]";
@@ -1958,7 +1979,7 @@ public final class ServerCommandHandler {
                   server restore <name> <world-name>
                       Interactively restore a world backup.
                 
-                  server config <name> <key> <value>
+                  server config <get|set> <name> <key> [value]
                       Change a server.properties value.
                 
                 """);

@@ -711,7 +711,7 @@ public final class ServerManager {
                 .availableProcessors();
     }
 
-    public void changeConfig(
+    public void setConfig(
             String variable,
             String value,
             String name
@@ -791,6 +791,66 @@ public final class ServerManager {
                 StandardOpenOption.TRUNCATE_EXISTING,
                 StandardOpenOption.WRITE
         );
+    }
+
+    public String getConfig(
+            String variable,
+            String name
+    ) throws ServerManagerException {
+
+        List<String> config;
+
+        Objects.requireNonNull(
+                variable,
+                "variable"
+        );
+
+        Path configPath =
+                getServerDirectory(name)
+                        .resolve("server.properties");
+
+        if (!Files.isRegularFile(configPath)) {
+            throw new ServerManagerException(
+                    "server.properties does not exist."
+            );
+        }
+        try {
+            config =
+                    Files.readAllLines(configPath);
+        } catch (IOException e) {
+            throw new ServerManagerException("Could not read server.properties");
+        }
+
+        for (String s : config) {
+
+            String line =
+                    s.trim();
+
+            if (line.isEmpty()
+                    || line.startsWith("#")) {
+                continue;
+            }
+
+            int separator =
+                    line.indexOf('=');
+
+            if (separator == -1) {
+                continue;
+            }
+
+            String key =
+                    line.substring(
+                            0,
+                            separator
+                    ).trim();
+
+            if (key.equals(variable)) {
+                return s;
+            }
+        }
+
+        throw new ServerManagerException("Key '" + variable + "' not found");
+
     }
 
     public void printPlayers(String name)

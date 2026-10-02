@@ -259,7 +259,7 @@ public final class CommandDispatcher implements AutoCloseable {
                   server delete <name>
                   server rename <name> <new-name>
                   server import world <server> <path>
-                  server config <name> <variable> <value>
+                  server config <get|set> <name> <variable> [value]
                   server restore <name> <world-name>
                 
                 Global:
