@@ -76,6 +76,7 @@ public final class Main {
                   server backup <name>
                   server delete <name>
                   server rename <name> <new-name>
+                  server clone <name> <clone-name>
                   server import <world|config> <server> <path>
                   server config <get|set> <name> <variable> [value]
                   server update <name> <version>

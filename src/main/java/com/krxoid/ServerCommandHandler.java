@@ -14,6 +14,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
@@ -202,6 +203,14 @@ public final class ServerCommandHandler {
                         2
                 );
                 return rename(commandArgs);
+
+            case "clone":
+                requireArguments(
+                        command,
+                        commandArgs,
+                        2
+                );
+                return clone(commandArgs);
 
             case "logs":
                 requireArguments(
@@ -842,13 +851,39 @@ public final class ServerCommandHandler {
             System.out.println(
                     "Server '" +
                             name +
-                            "' restarted."
+                            "' restarted"
             );
 
             return 0;
 
         } catch (ServerManagerException e) {
 
+            printError(e);
+            return 1;
+        }
+    }
+
+    public int clone(String[] args) {
+
+        String name = args[0];
+        String cloneName = args[1];
+
+        try {
+
+            serverManager.cloneServer(
+                    name,
+                    cloneName
+            );
+
+            System.out.println(
+                    "Server '" +
+                            cloneName +
+                            "' cloned"
+            );
+
+            return 0;
+
+        } catch (ServerManagerException e) {
             printError(e);
             return 1;
         }

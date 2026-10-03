@@ -609,6 +609,35 @@ public final class ServerManager {
         getInstance(name).restart();
     }
 
+    public void cloneServer(
+            String name,
+            String cloneName
+    ) throws ServerManagerException {
+
+        Path source =
+                getServerDirectory(name);
+
+        Path destination =
+                SERVERS_DIR.resolve(cloneName);
+        if (destination.toFile().exists())
+            throw new ServerManagerException(
+                    "Server '" + cloneName + "' already exists"
+            );
+
+        try {
+            copyDirectory(
+                    source,
+                    SERVERS_DIR.resolve(cloneName)
+            );
+            loadServers();
+        } catch (IOException e) {
+            throw new ServerManagerException(
+                    "Could not copy server '" + name + "' \n" +
+                            e
+            );
+        }
+    }
+
     public void printStatus(String name)
             throws ServerManagerException {
 
