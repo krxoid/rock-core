@@ -9,7 +9,7 @@ public final class Main {
     private Main() {
     }
 
-    public static void main(String[] args) {
+     static void main(String[] args) {
 
         CommandDispatcher dispatcher =
                 new CommandDispatcher();
@@ -76,7 +76,7 @@ public final class Main {
                   server backup <name>
                   server delete <name>
                   server rename <name> <new-name>
-                  server import world <server> <path>
+                  server import <world|config> <server> <path>
                   server config <get|set> <name> <variable> [value]
                   server update <name> <version>
                   server restore <name> <world-name>

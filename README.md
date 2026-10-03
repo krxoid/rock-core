@@ -112,7 +112,7 @@ server exec <name> <command>
 server backup <name>
 server restore <name> <world> <timestamp>
 server delete <server|backup|logs> <name> [count]
-server import world <server> <path>
+server import <world|config> <server> <path>
 server config <get|set> <name> <variable> [value]
 server update <name> <version>
 server restore <name> <world-name>

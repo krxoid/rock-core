@@ -794,6 +794,129 @@ public final class ServerManager {
         );
     }
 
+    public void importWorld(
+            String serverName,
+            Path source
+    ) throws ServerManagerException {
+
+        try {
+
+            if (!Files.exists(source)) {
+
+                throw new ServerManagerException(
+                        "World path does not exist: " +
+                                source
+                );
+            }
+
+            if (!Files.isDirectory(source)) {
+
+                throw new ServerManagerException(
+                        "World path must be a directory: " +
+                                source
+                );
+            }
+
+            ServerInstance server =
+                    getInstance(serverName);
+
+            Path worldsDirectory =
+                    server.getDirectory()
+                            .resolve("worlds");
+
+            Files.createDirectories(worldsDirectory);
+
+            String worldName = getWorldName(source);
+
+            Path destination =
+                    worldsDirectory.resolve(
+                            worldName
+                    );
+
+            if (Files.exists(destination)) {
+
+                throw new ServerManagerException(
+                        "A world named '" +
+                                worldName +
+                                "' already exists."
+                );
+            }
+
+            copyDirectory(
+                    source,
+                    destination
+            );
+
+            System.out.println(
+                    "Imported world '" +
+                            worldName +
+                            "' into '" +
+                            serverName +
+                            "'."
+            );
+
+        } catch (IOException e) {
+            throw new ServerManagerException(
+                    "Failed to import world",
+                    e
+            );
+        }
+    }
+
+    private String getWorldName(Path source) throws ServerManagerException {
+        String worldName =
+                source.getFileName()
+                        .toString();
+
+        if (worldName.isBlank()
+                || worldName.equals(".")
+                || worldName.equals("..")
+                || worldName.contains("/")
+                || worldName.contains("\\")) {
+
+            throw new ServerManagerException(
+                    "Invalid world directory name: " +
+                            worldName
+            );
+        }
+        return worldName;
+    }
+
+    public void importConfig(
+            String name,
+            Path source
+    ) throws ServerManagerException {
+
+        validateName(name);
+
+        Path destination =
+                getServerDirectory(name)
+                        .resolve("server.properties");
+
+        if (!Files.exists(source))
+            throw new ServerManagerException(
+                "Could not import config"
+            );
+        try {
+
+            String answer = lineReader.readLine(
+                    "Config already exists. Delete the old config? [y/N] "
+            );
+
+            if (!answer.equalsIgnoreCase("y")) {
+                return;
+            }
+
+            Files.copy(source, destination);
+
+        } catch (IOException e) {
+            throw new ServerManagerException(
+                    "Could not import config",
+                    e
+            );
+        }
+    }
+
     public void printPlayers(String name)
             throws ServerManagerException {
 

@@ -526,139 +526,43 @@ public final class ServerCommandHandler {
             return 1;
         }
 
-        switch (type) {
-
-            case "world":
-                return importWorld(
-                        serverName,
-                        source
-                );
-
-            default:
-
-                System.err.println(
-                        "Unknown import type: " +
-                                type
-                );
-
-                System.err.println(
-                        "Available import types:"
-                );
-
-                System.err.println(
-                        "  world"
-                );
-
-                return 1;
-        }
-    }
-
-    private int importWorld(
-            String serverName,
-            Path source
-    ) {
-
         try {
 
-            if (!Files.exists(source)) {
+            switch (type) {
 
-                throw new ServerManagerException(
-                        "World path does not exist: " +
-                                source
-                );
-            }
+                case "world":
+                    serverManager.importWorld(
+                            serverName,
+                            source
+                    );
+                    return 0;
 
-            if (!Files.isDirectory(source)) {
+                case "config":
+                    serverManager.importConfig(
+                            serverName,
+                            source
+                    );
+                    return 0;
 
-                throw new ServerManagerException(
-                        "World path must be a directory: " +
-                                source
-                );
-            }
+                default:
 
-            ServerInstance server =
-                    serverManager.getInstance(
-                            serverName
+                    System.err.println(
+                            "Unknown import type: " +
+                                    type
                     );
 
-            if (server.isRunning()) {
-
-                throw new ServerManagerException(
-                        "Cannot import a world while the server " +
-                                "is running. Stop it first."
-                );
-            }
-
-            Path worldsDirectory =
-                    serverManager
-                            .getServerDirectory(
-                                    serverName
-                            )
-                            .resolve("worlds");
-
-            Files.createDirectories(
-                    worldsDirectory
-            );
-
-            String worldName =
-                    source.getFileName()
-                            .toString();
-
-            if (worldName.isBlank()
-                    || worldName.equals(".")
-                    || worldName.equals("..")
-                    || worldName.contains("/")
-                    || worldName.contains("\\")) {
-
-                throw new ServerManagerException(
-                        "Invalid world directory name: " +
-                                worldName
-                );
-            }
-
-            Path destination =
-                    worldsDirectory.resolve(
-                            worldName
+                    System.err.println(
+                            "Available import types:"
                     );
 
-            if (Files.exists(destination)) {
+                    System.err.println(
+                            "  world \n  config"
+                    );
 
-                throw new ServerManagerException(
-                        "A world named '" +
-                                worldName +
-                                "' already exists."
-                );
+                    return 1;
             }
-
-            copyDirectory(
-                    source,
-                    destination
-            );
-
-            System.out.println(
-                    "Imported world '" +
-                            worldName +
-                            "' into '" +
-                            serverName +
-                            "'."
-            );
-
-            return 0;
-
         } catch (ServerManagerException e) {
-
             printError(e);
-            return 1;
-
-        } catch (IOException e) {
-
-            printError(
-                    new ServerManagerException(
-                            "Failed to import world.",
-                            e
-                    )
-            );
-
             return 1;
         }
     }
@@ -696,29 +600,7 @@ public final class ServerCommandHandler {
                             != null
             ) {
 
-                String entryName =
-                        entry.getName();
-
-                Path output =
-                        normalizedDestination
-                                .resolve(
-                                        entryName
-                                )
-                                .normalize();
-
-                /*
-                 * Prevent ../ and absolute-path entries from
-                 * escaping the server directory.
-                 */
-                if (!output.startsWith(
-                        normalizedDestination
-                )) {
-
-                    throw new IOException(
-                            "Unsafe path in BDS archive: " +
-                                    entryName
-                    );
-                }
+                Path output = getOutput(entry, normalizedDestination);
 
                 if (entry.isDirectory()) {
 
@@ -750,6 +632,33 @@ public final class ServerCommandHandler {
         }
     }
 
+    private static Path getOutput(ZipEntry entry, Path normalizedDestination) throws IOException {
+        String entryName =
+                entry.getName();
+
+        Path output =
+                normalizedDestination
+                        .resolve(
+                                entryName
+                        )
+                        .normalize();
+
+        /*
+         * Prevent ../ and absolute-path entries from
+         * escaping the server directory.
+         */
+        if (!output.startsWith(
+                normalizedDestination
+        )) {
+
+            throw new IOException(
+                    "Unsafe path in BDS archive: " +
+                            entryName
+            );
+        }
+        return output;
+    }
+
     private void copyDirectory(
             Path source,
             Path destination
@@ -767,27 +676,7 @@ public final class ServerCommandHandler {
                 source.toAbsolutePath()
                         .normalize();
 
-        Path normalizedDestination =
-                destination.toAbsolutePath()
-                        .normalize();
-
-        if (normalizedDestination.equals(
-                normalizedSource
-        )) {
-
-            throw new IOException(
-                    "Source and destination are identical."
-            );
-        }
-
-        if (normalizedDestination.startsWith(
-                normalizedSource
-        )) {
-
-            throw new IOException(
-                    "Destination cannot be inside source."
-            );
-        }
+        Path normalizedDestination = getNormalizedDestination(destination, normalizedSource);
 
         Files.createDirectories(
                 normalizedDestination
@@ -841,6 +730,31 @@ public final class ServerCommandHandler {
                 }
             }
         }
+    }
+
+    private static Path getNormalizedDestination(Path destination, Path normalizedSource) throws IOException {
+        Path normalizedDestination =
+                destination.toAbsolutePath()
+                        .normalize();
+
+        if (normalizedDestination.equals(
+                normalizedSource
+        )) {
+
+            throw new IOException(
+                    "Source and destination are identical."
+            );
+        }
+
+        if (normalizedDestination.startsWith(
+                normalizedSource
+        )) {
+
+            throw new IOException(
+                    "Destination cannot be inside source."
+            );
+        }
+        return normalizedDestination;
     }
 
     public int list(String modifier) {
@@ -1239,106 +1153,112 @@ public final class ServerCommandHandler {
             String[] args
     ) throws ServerManagerException {
 
-        if (args.length < 2) {
+        try {
 
-            throw new ServerManagerException(
-                    "Usage: server delete " +
-                            "<server|backup|logs> <name> [count]"
-            );
-        }
-
-        String type =
-                args[0].toLowerCase();
-
-        String name =
-                args[1];
-
-        switch (type) {
-
-            case "server":
-
-                if (args.length != 2) {
-
-                    throw new ServerManagerException(
-                            "Usage: server delete " +
-                                    "server <name>"
-                    );
-                }
-
-                serverManager.deleteServer(
-                        name
-                );
-
-                System.out.println(
-                        "Server '" +
-                                name +
-                                "' deleted."
-                );
-
-                return 0;
-
-            case "backup":
-
-                if (args.length != 3) {
-
-                    throw new ServerManagerException(
-                            "Usage: server delete " +
-                                    "backup <name> <count>"
-                    );
-                }
-
-                int count;
-
-                try {
-
-                    count =
-                            Integer.parseInt(
-                                    args[2]
-                            );
-
-                } catch (NumberFormatException e) {
-
-                    throw new ServerManagerException(
-                            "Backup count must be a number.",
-                            e
-                    );
-                }
-
-                serverManager.deleteBackup(
-                        name,
-                        count
-                );
-
-                return 0;
-
-            case "logs":
-
-                if (args.length != 2) {
-
-                    throw new ServerManagerException(
-                            "Usage: server delete " +
-                                    "logs <name>"
-                    );
-                }
-
-                serverManager.deleteLogs(
-                        name
-                );
-
-                System.out.println(
-                        "Logs for server '" +
-                                name +
-                                "' deleted."
-                );
-
-                return 0;
-
-            default:
+            if (args.length < 2) {
 
                 throw new ServerManagerException(
-                        "Unknown delete target: " +
-                                type
+                        "Usage: server delete " +
+                                "<server|backup|logs> <name> [count]"
                 );
+            }
+
+            String type =
+                    args[0].toLowerCase();
+
+            String name =
+                    args[1];
+
+            switch (type) {
+
+                case "server":
+
+                    if (args.length != 2) {
+
+                        throw new ServerManagerException(
+                                "Usage: server delete " +
+                                        "server <name>"
+                        );
+                    }
+
+                    serverManager.deleteServer(
+                            name
+                    );
+
+                    System.out.println(
+                            "Server '" +
+                                    name +
+                                    "' deleted."
+                    );
+
+                    return 0;
+
+                case "backup":
+
+                    if (args.length != 3) {
+
+                        throw new ServerManagerException(
+                                "Usage: server delete " +
+                                        "backup <name> <count>"
+                        );
+                    }
+
+                    int count;
+
+                    try {
+
+                        count =
+                                Integer.parseInt(
+                                        args[2]
+                                );
+
+                    } catch (NumberFormatException e) {
+
+                        throw new ServerManagerException(
+                                "Backup count must be a number.",
+                                e
+                        );
+                    }
+
+                    serverManager.deleteBackup(
+                            name,
+                            count
+                    );
+
+                    return 0;
+
+                case "logs":
+
+                    if (args.length != 2) {
+
+                        throw new ServerManagerException(
+                                "Usage: server delete " +
+                                        "logs <name>"
+                        );
+                    }
+
+                    serverManager.deleteLogs(
+                            name
+                    );
+
+                    System.out.println(
+                            "Logs for server '" +
+                                    name +
+                                    "' deleted."
+                    );
+
+                    return 0;
+
+                default:
+
+                    throw new ServerManagerException(
+                            "Unknown delete target: " +
+                                    type
+                    );
+            }
+        } catch (ServerManagerException e) {
+            printError(e);
+            return 1;
         }
     }
 
@@ -1969,7 +1889,7 @@ public final class ServerCommandHandler {
                     " <name> <command>";
 
             case "import" ->
-                    " <type> <server> <path>";
+                    " <world|config> <server> <path>";
 
             case "list" ->
                     " <servers|backups>";
@@ -2040,8 +1960,8 @@ public final class ServerCommandHandler {
                   server delete backup <name> <count>
                       Delete the oldest backup snapshots.
                 
-                  server import world <server> <path>
-                      Import a Minecraft world.
+                  server import <world|config> <server> <path>
+                      Import a Minecraft world or server.properties.
                 
                   server update <name> <version>
                       Update a server to a newer BDS version.
