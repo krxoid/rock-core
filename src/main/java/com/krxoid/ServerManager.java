@@ -88,6 +88,17 @@ public final class ServerManager {
                 .noneMatch(ServerInstance::isRunning);
     }
 
+    public boolean isIdle(ServerInstance serverInstance) {
+            return serverInstance.isRunning();
+    }
+
+    public List<ServerInstance> getRunningServers() {
+        return instances.values()
+                .stream()
+                .filter(ServerInstance::isRunning)
+                .toList();
+    }
+
     public void listServers(String modifier)
             throws ServerManagerException, IOException {
 

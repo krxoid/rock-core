@@ -14,7 +14,6 @@ import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
@@ -50,6 +49,10 @@ public final class ServerCommandHandler {
     ) {
         this.serverManager =
                 new ServerManager(lineReader);
+    }
+
+    public ServerManager getServerManager() {
+        return serverManager;
     }
 
     public int handle(String[] args)
@@ -326,9 +329,6 @@ public final class ServerCommandHandler {
         }
     }
 
-    /*
-     * server create <name> <version>
-     */
     private int create(String[] args) {
 
         if (args.length != 2) {
@@ -2014,7 +2014,7 @@ public final class ServerCommandHandler {
                 """);
     }
 
-    private static void printError(
+    static void printError(
             ServerManagerException e
     ) {
 

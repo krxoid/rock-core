@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.krxoid.ServerCommandHandler.printError;
 import static com.krxoid.ServerManager.ROOT;
 
 public final class CommandDispatcher implements AutoCloseable {
@@ -125,17 +126,48 @@ public final class CommandDispatcher implements AutoCloseable {
                 continue;
             }
 
-            if (trimmed.equalsIgnoreCase("exit") ||
-                    trimmed.equalsIgnoreCase("quit")) {
+            String[] args = trimmed.split("\\s+");
 
-                    if (serverHandler.isIdle()) {
-                        break;
+            if (args[0].equalsIgnoreCase("exit") ||
+                    args[0].equalsIgnoreCase("quit")) {
+
+                if (serverHandler.isIdle()) {
+                    break;
+                }
+
+                if (args.length > 1 && args[1].equalsIgnoreCase("now")) {
+                    ServerManager manager = serverHandler.getServerManager();
+
+                    List<Thread> threads = new ArrayList<>();
+
+                    for (ServerInstance server : manager.getRunningServers()) {
+                        Thread thread = new Thread(() -> {
+                            try {
+                                server.stop();
+                            } catch (ServerManagerException e) {
+                                printError(e);
+                            }
+                        });
+
+                        threads.add(thread);
+                        thread.start();
                     }
 
-                    lineReader.printAbove(
-                            "Could not exit rock-core: " +
-                                    "A server is still running"
-                    );
+                    for (Thread thread : threads) {
+                        try {
+                            thread.join();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
+
+                    break;
+                }
+
+                lineReader.printAbove(
+                        "Could not exit rock-core: A server is still running"
+                );
 
                 continue;
             }
@@ -267,8 +299,7 @@ public final class CommandDispatcher implements AutoCloseable {
                 Global:
                   help
                   version
-                  exit
-                  quit
+                  exit/quit [now]
                   cls
                   versions <range>
                   latest
