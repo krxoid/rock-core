@@ -188,6 +188,14 @@ public final class ServerCommandHandler {
                 );
                 return importCommand(commandArgs);
 
+            case "export":
+                requireArguments(
+                        command,
+                        commandArgs,
+                        3
+                );
+                return exportCommand(commandArgs);
+
             case "restore":
                 requireArguments(
                         command,
@@ -501,9 +509,6 @@ public final class ServerCommandHandler {
         }
     }
 
-    /*
-     * server import <type> <server> <path>
-     */
     private int importCommand(
             String[] args
     ) {
@@ -562,6 +567,78 @@ public final class ServerCommandHandler {
 
                     System.err.println(
                             "Available import types:"
+                    );
+
+                    System.err.println(
+                            "  world \n  config"
+                    );
+
+                    return 1;
+            }
+        } catch (ServerManagerException e) {
+            printError(e);
+            return 1;
+        }
+    }
+
+    private int exportCommand(
+            String[] args
+    ) {
+
+        String type =
+                args[0].toLowerCase();
+
+        String serverName =
+                args[1];
+
+        Path destination;
+
+        try {
+
+            destination =
+                    Path.of(args[2])
+                            .toAbsolutePath()
+                            .normalize();
+
+        } catch (Exception e) {
+
+            printError(
+                    new ServerManagerException(
+                            "Invalid destination path.",
+                            e
+                    )
+            );
+
+            return 1;
+        }
+
+        try {
+
+            switch (type) {
+
+                case "world":
+                    serverManager.exportWorld(
+                            serverName,
+                            destination
+                    );
+                    return 0;
+
+                case "config":
+                    serverManager.exportConfig(
+                            serverName,
+                            destination
+                    );
+                    return 0;
+
+                default:
+
+                    System.err.println(
+                            "Unknown export type: " +
+                                    type
+                    );
+
+                    System.err.println(
+                            "Available export types:"
                     );
 
                     System.err.println(
@@ -1923,7 +2000,7 @@ public final class ServerCommandHandler {
             case "exec" ->
                     " <name> <command>";
 
-            case "import" ->
+            case "import", "export" ->
                     " <world|config> <server> <path>";
 
             case "list" ->
@@ -1997,6 +2074,10 @@ public final class ServerCommandHandler {
                 
                   server import <world|config> <server> <path>
                       Import a Minecraft world or server.properties.
+                
+                  server export <world|config> <name> <path>
+                      Export a Minecraft world or server.properties
+
                 
                   server update <name> <version>
                       Update a server to a newer BDS version.

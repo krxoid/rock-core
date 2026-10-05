@@ -903,6 +903,43 @@ public final class ServerManager {
         }
     }
 
+    public void importConfig(
+            String name,
+            Path source
+    ) throws ServerManagerException {
+
+        Path configDirectory =
+                getServerDirectory(name).resolve("config");
+
+        try (Stream<Path> files = Files.walk(source)) {
+
+            for (Path file : files.toList()) {
+
+                Path target =
+                        configDirectory.resolve(
+                                source.relativize(file)
+                        );
+
+                if (Files.isDirectory(file)) {
+                    Files.createDirectories(target);
+                } else {
+                    Files.copy(
+                            file,
+                            target,
+                            StandardCopyOption.REPLACE_EXISTING
+                    );
+                }
+            }
+
+        } catch (IOException e) {
+            throw new ServerManagerException(
+                    "Could not import config: " +
+                            e.getMessage(),
+                    e
+            );
+        }
+    }
+
     private String getWorldName(Path source) throws ServerManagerException {
         String worldName =
                 source.getFileName()
@@ -922,37 +959,61 @@ public final class ServerManager {
         return worldName;
     }
 
-    public void importConfig(
+    public void exportWorld(
             String name,
-            Path source
+            Path destination
     ) throws ServerManagerException {
 
-        validateName(name);
+        try (Stream<Path> worlds =
+                     Files.list(getServerDirectory(name).resolve("worlds"))) {
 
-        Path destination =
-                getServerDirectory(name)
-                        .resolve("server.properties");
+            for (Path world : worlds.toList()) {
 
-        if (!Files.exists(source))
-            throw new ServerManagerException(
-                "Could not import config"
-            );
-        try {
+                Path worldDestination =
+                        destination.resolve(world.getFileName());
 
-            String answer = lineReader.readLine(
-                    "Config already exists. Delete the old config? [y/N] "
-            );
+                try (Stream<Path> files = Files.walk(world)) {
 
-            if (!answer.equalsIgnoreCase("y")) {
-                return;
+                    for (Path file : files.toList()) {
+
+                        Path target =
+                                worldDestination.resolve(
+                                        world.relativize(file)
+                                );
+
+                        if (Files.isDirectory(file)) {
+                            Files.createDirectories(target);
+                        } else {
+                            Files.copy(file, target);
+                        }
+                    }
+                }
             }
-
-            Files.copy(source, destination);
 
         } catch (IOException e) {
             throw new ServerManagerException(
-                    "Could not import config",
-                    e
+                    "Could not export worlds: " + e.getMessage()
+            );
+        }
+    }
+
+    public void exportConfig(
+            String name,
+            Path destination
+    ) throws ServerManagerException {
+
+        destination = destination.resolve("server.properties");
+
+        try {
+            Files.copy(
+                    getServerDirectory(name)
+                            .resolve("server.properties"),
+                    destination
+            );
+        } catch (IOException e) {
+            throw new ServerManagerException(
+                    "Could not copy server.properties" +
+                            e
             );
         }
     }

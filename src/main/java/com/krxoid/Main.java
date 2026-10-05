@@ -78,6 +78,7 @@ public final class Main {
                   server rename <name> <new-name>
                   server clone <name> <clone-name>
                   server import <world|config> <server> <path>
+                  server export <world|config> <name> <path>
                   server config <get|set> <name> <variable> [value]
                   server update <name> <version>
                   server restore <name> <world-name>

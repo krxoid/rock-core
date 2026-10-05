@@ -213,7 +213,7 @@ The update process:
 
 If the update fails, Rock Core uses the temporary backup to restore the previous server state.
 
-This keeps server data independent from the BDS distribution itself.
+This keeps server data independent of the BDS distribution itself.
 
 ## Backups
 
