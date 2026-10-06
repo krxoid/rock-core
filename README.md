@@ -99,7 +99,7 @@ Contains the command-level implementation for server operations.
 Examples include:
 
 ```text
-server list servers
+server list servers size
 server list backups
 server create <name> <version>
 server start <name>

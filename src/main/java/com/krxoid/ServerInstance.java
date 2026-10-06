@@ -1,5 +1,6 @@
 package com.krxoid;
 
+import com.krxoid.Objects.ServerManagerException;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.UserInterruptException;

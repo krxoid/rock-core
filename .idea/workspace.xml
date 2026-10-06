@@ -5,11 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1a4b0550-da09-4856-bb6a-b33baddedb91" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/Objects/ServerListEntry.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/Objects/Sorter.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/CommandDispatcher.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/CommandDispatcher.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerCommandHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerCommandHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerInstance.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerInstance.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/krxoid/ServerManagerException.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/krxoid/Objects/ServerManagerException.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -37,6 +40,14 @@
         </projects_view>
       </state>
     </system>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Enum" />
+        <option value="Class" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />

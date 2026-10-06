@@ -1,4 +1,4 @@
-package com.krxoid;
+package com.krxoid.Objects;
 
 public class ServerManagerException extends Exception {
 

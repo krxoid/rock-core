@@ -1,5 +1,8 @@
 package com.krxoid;
 
+import com.krxoid.Objects.ServerListEntry;
+import com.krxoid.Objects.ServerManagerException;
+import com.krxoid.Objects.Sorter;
 import org.jline.reader.LineReader;
 
 import java.io.BufferedReader;
@@ -99,8 +102,10 @@ public final class ServerManager {
                 .toList();
     }
 
-    public void listServers(String modifier)
-            throws ServerManagerException, IOException {
+    public void listServers(
+            String modifier,
+            String sorter
+            ) throws ServerManagerException, IOException {
 
         initializeDirectories();
 
@@ -108,7 +113,7 @@ public final class ServerManager {
                 && !"backups".equals(modifier)) {
 
             throw new ServerManagerException(
-                    "Usage: server list <servers|backups>"
+                    "Usage: server list <servers|backups> [modifier]"
             );
         }
 
@@ -142,13 +147,79 @@ public final class ServerManager {
             if ("backups".equals(modifier)) {
                 listBackups(directories);
             } else {
-                listServers(directories);
+                listServers(
+                        directories,
+                        parseSorter(sorter)
+                );
             }
         }
     }
 
-    private void listServers(List<Path> directories)
-            throws IOException {
+    private Sorter parseSorter(String value) {
+        try {
+            return Sorter.valueOf(value.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Invalid sorter: " + value +
+                            ". Available sorters: name, status, pid, version, size"
+            );
+        }
+    }
+
+    private void listServers(
+            List<Path> directories,
+            Sorter sorter
+    ) throws IOException {
+
+        List<ServerListEntry> entries = new ArrayList<>();
+
+        for (Path directory : directories) {
+
+            String name =
+                    directory.getFileName().toString();
+
+            ServerInstance server;
+
+            try {
+                server = getInstance(name);
+            } catch (ServerManagerException e) {
+                System.err.println(e.getMessage());
+                return;
+            }
+
+            boolean running =
+                    server.isRunning();
+
+            entries.add(new ServerListEntry(
+                    name,
+                    running,
+                    running ? server.getPid() : -1,
+                    server.getVersion(),
+                    getDirectorySize(directory)
+            ));
+        }
+
+        entries.sort(switch (sorter) {
+            case NAME ->
+                    Comparator.comparing(ServerListEntry::name);
+
+            case STATUS ->
+                    Comparator.comparing(ServerListEntry::running);
+
+            case PID ->
+                    Comparator.comparingLong(ServerListEntry::pid);
+
+            case VERSION ->
+                    Comparator.comparing(
+                            entry -> Objects.requireNonNullElse(
+                                    entry.version(),
+                                    ""
+                            )
+                    );
+
+            case SIZE ->
+                    Comparator.comparingLong(ServerListEntry::size);
+        });
 
         System.out.println("SERVERS");
 
@@ -163,41 +234,21 @@ public final class ServerManager {
 
         System.out.println("─".repeat(70));
 
-        for (Path directory : directories) {
-
-            String name =
-                    directory.getFileName().toString();
-
-            ServerInstance server;
-
-            try {
-                server =
-                        getInstance(name);
-            } catch (ServerManagerException e) {
-                System.err.println(e.getMessage());
-                return;
-            }
-
-            boolean running =
-                    server.isRunning();
-
-            String version =
-                    server.getVersion();
-
-            long size =
-                    getDirectorySize(directory);
+        for (ServerListEntry entry : entries) {
 
             System.out.printf(
                     "%-20s %-12s %-10s %-14s %-10s%n",
-                    name,
-                    running ? "running" : "stopped",
-                    running
-                            ? Long.toString(server.getPid())
+                    entry.name(),
+                    entry.running()
+                            ? "running"
+                            : "stopped",
+                    entry.running()
+                            ? Long.toString(entry.pid())
                             : "-",
-                    version != null
-                            ? version
+                    entry.version() != null
+                            ? entry.version()
                             : "-",
-                    formatSize(size)
+                    formatSize(entry.size())
             );
         }
 
@@ -207,7 +258,9 @@ public final class ServerManager {
                 "%-20s %s%n",
                 "TOTAL",
                 formatSize(
-                        getTotalDirectorySize(directories)
+                        entries.stream()
+                                .mapToLong(ServerListEntry::size)
+                                .sum()
                 )
         );
     }

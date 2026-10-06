@@ -1,5 +1,6 @@
 package com.krxoid;
 
+import com.krxoid.Objects.ServerManagerException;
 import org.jline.reader.LineReader;
 
 import java.io.IOException;
@@ -76,12 +77,7 @@ public final class ServerCommandHandler {
         switch (command) {
 
             case "list":
-                requireArguments(
-                        command,
-                        commandArgs,
-                        1
-                );
-                return list(commandArgs[0]);
+                return list(commandArgs);
 
             case "create":
                 requireArguments(
@@ -843,12 +839,35 @@ public final class ServerCommandHandler {
         return normalizedDestination;
     }
 
-    public int list(String modifier) {
+    public int list(String[] args) {
+
+        try {
+            if (args.length > 2) {
+
+                requireArguments(
+                        "list",
+                        args,
+                        67
+                );
+                return 1;
+
+            }
+        } catch (ServerManagerException e) {
+            printError(e);
+            return 1;
+        }
+
+        String modifier = args[0];
+        String sorter = "name";
+
+        if (args.length!=1)
+            sorter = args[1];
 
         try {
 
             serverManager.listServers(
-                    modifier
+                    modifier,
+                    sorter
             );
 
             return 0;
@@ -2004,7 +2023,7 @@ public final class ServerCommandHandler {
                     " <world|config> <server> <path>";
 
             case "list" ->
-                    " <servers|backups>";
+                    " <servers|backups> [modifier]";
 
             case "restore" ->
                     " <name> <world-name>";
@@ -2032,7 +2051,7 @@ public final class ServerCommandHandler {
                 
                 Server commands:
                 
-                  server list <servers|backups>
+                  server list <servers|backups> [sorter]
                       List configured servers or backups.
                 
                   server create <name> <version>

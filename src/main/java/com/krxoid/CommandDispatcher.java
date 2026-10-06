@@ -3,6 +3,7 @@ package com.krxoid;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.krxoid.Objects.ServerManagerException;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
@@ -279,7 +280,7 @@ public final class CommandDispatcher implements AutoCloseable {
                 Rock Core - Minecraft Bedrock Server Manager
                 
                 Commands:
-                  server list <servers|backups>
+                  server list <servers|backups> [sorter]
                   server create <name> <version>
                   server start <name>
                   server stop <name>
