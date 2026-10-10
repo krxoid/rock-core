@@ -248,6 +248,12 @@ public final class CommandDispatcher implements AutoCloseable {
 
                     return 0;
 
+                case "doctor":
+
+                    doctor();
+
+                    return 0;
+
                 default:
 
                     System.err.println(
@@ -305,6 +311,7 @@ public final class CommandDispatcher implements AutoCloseable {
                   cls
                   versions <range>
                   latest
+                  doctor
                 """);
     }
 
@@ -450,6 +457,56 @@ public final class CommandDispatcher implements AutoCloseable {
         System.out.println(
                 "v" + VERSION
         );
+    }
+
+    private int doctor() {
+        int passed = 0;
+        int failed = 0;
+
+        System.out.println("rock-core doctor\n");
+
+        // Java runtime
+        try {
+            System.out.printf("[OK] Java %s%n",
+                    System.getProperty("java.version"));
+            passed++;
+        } catch (Exception e) {
+            System.out.println("[FAIL] Java runtime unavailable");
+            failed++;
+        }
+
+        // Operating system
+        try {
+            System.out.printf("[OK] OS: %s (%s)%n",
+                    System.getProperty("os.name"),
+                    System.getProperty("os.arch"));
+            passed++;
+        } catch (Exception e) {
+            System.out.println("[FAIL] Cannot detect operating system");
+            failed++;
+        }
+
+        // Current working directory
+        try {
+            var cwd = java.nio.file.Path.of("").toAbsolutePath();
+
+            if (java.nio.file.Files.isDirectory(cwd)
+                    && java.nio.file.Files.isReadable(cwd)) {
+                System.out.println("[OK] Working directory accessible");
+                passed++;
+            } else {
+                System.out.println("[FAIL] Working directory inaccessible");
+                failed++;
+            }
+        } catch (Exception e) {
+            System.out.println("[FAIL] Cannot access working directory");
+            failed++;
+        }
+
+        System.out.printf("%n%d checks passed, %d failed.%n",
+                passed, failed);
+
+        return failed == 0 ? 0 : 1;
     }
 
     private String[] parseArguments(String input) {
