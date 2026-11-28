@@ -330,7 +330,7 @@ build/libs/
 
 ## Installation
 
-Rock Core is distributed through its PKGBUILD and `install.sh` script.
+Rock Core is distributed through its PKGBUILD, docker and `install.sh` script.
 
 ### Arch Linux
 
@@ -345,6 +345,20 @@ curl -fsSL https://raw.githubusercontent.com/krxoid/rock-core/master/install.sh 
 ```
 
 Native Debian and Fedora packages are currently not maintained.
+
+### Docker 
+
+You can also build rock core with docker:
+
+```bash
+docker build -t rock-core .
+```
+
+Run it:
+
+```bash
+docker run -it --rm rock-core
+```
 
 ## Updating Rock Core
 
