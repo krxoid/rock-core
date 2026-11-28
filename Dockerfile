@@ -13,4 +13,4 @@ WORKDIR /app
 
 COPY --from=builder /app/build/libs/*.jar /app/rock-core.jar
 
-ENTRYPOINT ["java", "-jar", "--enable-native-access=ALL-UNNAMED", "-Dorg.jline.utils.Log.level=DEBUG", "/app/rock-core.jar"]
+ENTRYPOINT ["java", "--enable-native-access=ALL-UNNAMED", "-Dorg.jline.utils.Log.level=DEBUG", "-jar", "/app/rock-core.jar"]
